@@ -52,6 +52,16 @@ pip install -r requirements.txt
 
 Подробнее о лимитах поиска, LLM и логировании — в разделах ниже в этом файле.
 
+## Demo Knowledge Base
+
+Проект содержит пример файла:
+
+`data/knowledge/_global/example.md`
+
+После запуска выполните в боте **`/index`**, при желании **`/stats`**, затем **`/mode rag`** и задайте вопрос, например: *«что такое IdeaVault?»*
+
+Роль и сценарии ассистента — в **`IDEA.md`**.
+
 ## Запуск API
 
 ```powershell
