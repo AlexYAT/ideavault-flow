@@ -116,6 +116,27 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 | POST | `/projects/current`, `/api/projects/current` | «Текущий проект» для `user_id` (как в боте) |
 | GET | `/review`, `/api/review` | `?project=...` опционально → `{"project": ..., "review": "..."}` (логика как у `/review` в боте) |
 | POST | `/review/ask`, `/api/review/ask` | Вопрос + retrieval (stub-ответ с `sources` / `next_steps`) |
+| POST | `/capture`, `/api/capture` | **MVP мультимодально:** `multipart/form-data` — поле `file` (картинка), опционально `caption`, `project` |
+
+### Мультимодальный захват (`POST /capture`)
+
+Один запрос — одна заметка в `items`: тело заметки собирается из подписи и (при настройке OpenAI) краткого **авто-описания изображения**.
+
+- **Без LLM / без ключа:** осмысленный **fallback** — подпись + строка о вложении (или короткая заглушка, если подписи нет); файл всё равно сохраняется как обычная запись.
+- **С `LLM_ENABLED=true` и непустым `OPENAI_API_KEY`:** вызывается один запрос к Chat Completions с `image_url` (модель из `OPENAI_MODEL`, обычно поддерживает vision). При ошибке API срабатывает тот же fallback — без «магии».
+
+Обязательно поле **`file`** (изображение). Только текст без файла — ответ `400` (для текста используйте `POST /items`). Пустой запрос (нет файла и нет смысла) — `400`.
+
+**Пример (PowerShell / curl.exe):**
+
+```powershell
+curl.exe -s -X POST "http://127.0.0.1:8000/capture" `
+  -F "file=@C:\path\to\photo.png" `
+  -F "caption=Идея интерфейса" `
+  -F "project=demo-course"
+```
+
+Ответ: `project`, `caption`, `capture` (итог в БД), `item_id`, `status: "saved"`.
 
 ## Запуск Telegram-бота
 

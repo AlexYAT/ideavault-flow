@@ -27,6 +27,7 @@ class CaptureSource(StrEnum):
     TELEGRAM_PHOTO = "telegram_photo"
     TELEGRAM_VOICE = "telegram_voice"
     API = "api"
+    API_IMAGE = "api_image"
     # TODO: extend for other channels
 
 
