@@ -1,29 +1,27 @@
-# IdeaVault Flow (MVP backend)
+# IdeaVault Flow (MVP backend + Telegram v1)
 
-Локальный backend для захвата идей в SQLite, полнотекстового поиска (FTS5) и заглушки review без LLM. Telegram на этом этапе не подключается.
+Локальный backend: SQLite, FTS5, FastAPI и Telegram-бот (polling) с тем же хранилищем.
 
 ## Возможности
 
-- **FastAPI**: `health`, CRUD-подобный `items`, `search`, список проектов, `review/ask` (stub)
-- **SQLite** + таблицы `items`, `sessions` и **FTS5** по полю `text`
-- При старте приложения вызывается **`init_db()`** (создание таблиц и FTS)
-- Отдельно: `python scripts/init_db.py` — инициализация БД без запуска uvicorn
+- **FastAPI**: `health`, `items`, `search`, `projects`, `review/ask` (stub)
+- **Telegram v1**: `/start`, `/set`, `/current`, `/projects`, `/clear`, заметки с `+`, обычный текст → поиск/review-заглушка
+- **SQLite** + таблицы `items`, `sessions`, **FTS5** по полю `text`
+- Старт API: `init_db()` в **lifespan**
+- Отдельно: `python scripts/init_db.py`
 
 ## Структура папок
 
 ```text
 app/
-  main.py              # FastAPI + lifespan (init_db при старте)
-  api/routes/          # HTTP endpoints
-  db/                  # engine, таблицы, FTS
-  schemas/             # Pydantic
-  repositories/        # SQLAlchemy
-  services/            # сценарии
-  utils/               # в т.ч. fts_query — безопасная подготовка FTS MATCH
-scripts/
-  init_db.py           # ручная инициализация БД
+  main.py              # FastAPI
+  bot/main.py          # Telegram polling
+  bot/handlers/        # тонкие хендлеры → services
+  api/routes/
+  db/  repositories/  services/  schemas/
+scripts/init_db.py
 tests/
-data/                  # файл БД по умолчанию (sqlite)
+data/                  # SQLite по умолчанию
 ```
 
 ## Окружение (venv)
@@ -47,23 +45,21 @@ pip install -r requirements.txt
 
 ## Переменные окружения
 
-Скопируйте `.env.example` в `.env` и при необходимости измените:
+Скопируйте `.env.example` в `.env`:
 
 | Переменная | Описание |
 |------------|----------|
 | `DATABASE_URL` | По умолчанию `sqlite:///./data/ideavault.db` |
+| `TELEGRAM_BOT_TOKEN` | Токен от [@BotFather](https://t.me/BotFather) — **нужен для бота** |
 | `LOG_LEVEL` | Например `INFO` |
-| `API_HOST` / `API_PORT` | Для справки (uvicorn задаёт хост/порт в CLI) |
 
 ## Инициализация базы
-
-Из корня проекта (с активированным venv):
 
 ```powershell
 python scripts/init_db.py
 ```
 
-При первом запуске **uvicorn** схема также создаётся автоматически через `lifespan`.
+При первом запуске **uvicorn** схема создаётся через `lifespan`.
 
 ## Запуск FastAPI
 
@@ -71,7 +67,37 @@ python scripts/init_db.py
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-OpenAPI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+Документация: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) — удобнее, чем `curl` в PowerShell.
+
+## Запуск Telegram-бота
+
+В `.env` должен быть непустой `TELEGRAM_BOT_TOKEN`. Из корня проекта:
+
+```powershell
+python -m app.bot.main
+```
+
+Режим **только long polling** (без webhook). Без токена процесс завершится с явным сообщением об ошибке.
+
+### Команды бота
+
+| Команда | Действие |
+|---------|----------|
+| `/start` | Краткая справка |
+| `/set <проект>` | Сохранить текущий проект в `sessions` |
+| `/current` | Показать текущий проект или «не выбран» |
+| `/projects` | Уникальные проекты из `items` |
+| `/clear` | Сбросить текущий проект |
+| `+ текст` | Заметка в SQLite (`source=telegram`) |
+| Обычный текст | Поиск через `review_ask_stub` + форматированный ответ |
+
+### Пример сценария в Telegram
+
+1. `/set prompt-course` — область поиска: проект `prompt-course` и глобальные заметки (без проекта).
+2. `+ идея для MVP` — сохраняется с текущим проектом.
+3. `что у меня по MVP?` — ответ по FTS с блоками «Источники» и «Дальше».
+
+Тот же файл БД, что использует FastAPI (при одинаковом `DATABASE_URL`).
 
 ## Тесты
 
@@ -79,50 +105,23 @@ OpenAPI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 pytest
 ```
 
-## Примеры `curl` (ручная проверка)
+## Ручная проверка HTTP API
 
-Подставьте при необходимости другой хост/порт.
+**Windows / PowerShell:** встроенный алиас `curl` ведёт себя иначе, чем `curl.exe`; для UTF-8 и привычного синтаксиса удобнее:
 
-**Health**
+- открыть **Swagger** (`/docs`), или
+- `curl.exe` с явными флагами, или
+- короткий скрипт на Python (`requests`).
 
-```powershell
-curl -s http://127.0.0.1:8000/api/health
-```
-
-**Создать запись**
+Примеры уже есть в истории проекта; базовые проверки:
 
 ```powershell
-curl -s -X POST http://127.0.0.1:8000/api/items -H "Content-Type: application/json" -d "{\"text\":\"Идея про MVP\",\"project\":\"demo\",\"priority\":\"high\"}"
+curl.exe -s http://127.0.0.1:8000/api/health
 ```
 
-**Список записей**
+## Задел
 
-```powershell
-curl -s "http://127.0.0.1:8000/api/items?limit=20"
-```
-
-**Поиск (ответ: JSON с полем `hits`)**
-
-```powershell
-curl -s "http://127.0.0.1:8000/api/search?q=MVP"
-curl -s "http://127.0.0.1:8000/api/search?q=идея&project=demo"
-```
-
-**Уникальные проекты (массив строк, без NULL)**
-
-```powershell
-curl -s http://127.0.0.1:8000/api/projects
-```
-
-**Review (stub, без LLM)**
-
-```powershell
-curl -s -X POST http://127.0.0.1:8000/api/review/ask -H "Content-Type: application/json" -d "{\"user_id\":\"1\",\"message\":\"MVP\",\"current_project\":null}"
-```
-
-## Задел по продукту
-
-- Telegram-бот, реальная LLM, Alembic, аутентификация — вне текущего этапа.
+- Фото, голос, webhook, LLM, Alembic, auth.
 
 ## Лицензия
 

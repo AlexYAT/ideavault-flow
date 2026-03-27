@@ -16,13 +16,15 @@ def capture_from_text(
     raw_payload_ref: str | None = None,
 ) -> int | None:
     """
-    If `raw_text` is capture mode, persist and return new item id.
+    If ``raw_text`` is capture mode, persist and return new item id.
 
-    TODO: photo captions, voice transcripts, dedupe, auto-tags.
+    Returns ``None`` if the message is not capture mode or if the note body is empty.
     """
     if detect_mode(raw_text) != ChatMode.CAPTURE:
         return None
-    body = strip_capture_prefix(raw_text)
+    body = strip_capture_prefix(raw_text).strip()
+    if not body:
+        return None
     row = items_repo.create_item(
         db,
         text=body,

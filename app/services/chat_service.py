@@ -1,44 +1,40 @@
-"""Telegram chat mode: non-capture messaging and next-step hints."""
+"""Formatted replies for free-text vault queries (e.g. Telegram chat mode)."""
 
 from sqlalchemy.orm import Session
 
-from app.services.rag_service import answer_with_context
+from app.services.review_service import review_ask_stub
+
+_MAX_MESSAGE_LEN = 3900
 
 
-def handle_chat_message(
+def answer_text_query(
     db: Session,
-    _user_id: str,
-    text: str,
-    *,
+    user_id: str,
+    message: str,
     current_project: str | None,
 ) -> str:
     """
-    Free-form chat over vault data.
+    Run the same retrieval path as ``/api/review/ask`` and return a single reply string.
 
-    TODO: persist chat turns, rate limits, command routing.
+    ``user_id`` is reserved for future personalization; scope is ``current_project``.
     """
-    has_project = current_project is not None
-    return answer_with_context(
-        db,
-        text,
-        current_project=current_project,
-        user_has_project=has_project,
-    )
-
-
-def suggest_next_steps(
-    db: Session,
-    *,
-    current_project: str | None,
-) -> list[str]:
-    """
-    Short actionable follow-ups after review/RAG.
-
-    TODO: derive from item status distribution, deadlines, user goals.
-    """
-    _ = (db, current_project)
-    return [
-        "Capture 3 new '+' items for your top idea.",
-        "Run /review to triage inbox items.",
-        "Use /set <project> to narrow RAG scope.",
-    ]
+    _ = user_id
+    result = review_ask_stub(db, message, current_project=current_project)
+    parts: list[str] = [result.answer]
+    if result.sources:
+        parts.append("")
+        parts.append("Источники:")
+        for src in result.sources[:3]:
+            line = src.text.strip().replace("\n", " ")
+            if len(line) > 120:
+                line = line[:117] + "..."
+            parts.append(f"• [{src.id}] {line}")
+    if result.next_steps:
+        parts.append("")
+        parts.append("Дальше:")
+        for step in result.next_steps[:3]:
+            parts.append(f"• {step}")
+    text = "\n".join(parts)
+    if len(text) > _MAX_MESSAGE_LEN:
+        text = text[: _MAX_MESSAGE_LEN - 3] + "..."
+    return text

@@ -16,6 +16,24 @@ from app.main import app
 
 
 @pytest.fixture
+def db_session() -> Generator[Session, None, None]:
+    """Isolated in-memory DB session for service-layer tests (no HTTP)."""
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    fts.ensure_fts(engine)
+    session_factory = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
+    session = session_factory()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+@pytest.fixture
 def client() -> Generator[TestClient, None, None]:
     """TestClient with ``get_db`` bound to a fresh in-memory SQLite database."""
     engine = create_engine(

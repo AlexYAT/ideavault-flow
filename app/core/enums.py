@@ -22,6 +22,7 @@ class ItemPriority(StrEnum):
 class CaptureSource(StrEnum):
     """Where the raw payload originated."""
 
+    TELEGRAM = "telegram"
     TELEGRAM_TEXT = "telegram_text"
     TELEGRAM_PHOTO = "telegram_photo"
     TELEGRAM_VOICE = "telegram_voice"
