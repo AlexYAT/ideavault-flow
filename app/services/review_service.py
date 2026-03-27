@@ -13,7 +13,7 @@ def review_ask_stub(
     current_project: str | None,
 ) -> ReviewAskResponse:
     """
-    Search the vault for ``message`` and return a short stub summary plus sources.
+    Search the vault for ``message`` and return a short summary plus sources.
 
     Scope matches HTTP search: with ``current_project``, include that project and
     global (NULL) rows; otherwise search all items.
@@ -27,26 +27,27 @@ def review_ask_stub(
     )
     if not hits:
         return ReviewAskResponse(
-            answer="По базе ничего не найдено",
+            answer="По базе ничего не нашлось — попробуйте другие слова или расширьте область (/clear).",
             sources=[],
-            next_steps=["Добавьте новую заметку", "Уточните запрос"],
+            next_steps=[
+                "Добавьте заметку с «+ текст».",
+                "Сбросьте проект командой /clear, чтобы искать по всем записям.",
+            ],
         )
 
-    preview = []
-    for h in hits[:5]:
-        snippet = h.text.strip().replace("\n", " ")
-        if len(snippet) > 120:
-            snippet = snippet[:117] + "..."
-        preview.append(f"[{h.id}] {snippet}")
+    n = len(hits)
+    if n == 1:
+        lead = "Нашёл одну релевантную запись."
+    else:
+        lead = f"Нашёл релевантных записей: {n}."
 
-    answer = (
-        "Найдено записей: "
-        f"{len(hits)}. Кратко: "
-        + " | ".join(preview)
-    )
+    first = hits[0].text.strip().replace("\n", " ")
+    if len(first) > 140:
+        first = first[:137] + "…"
+    answer = f"{lead} Первая по релевантности: {first}"
+
     next_steps = [
-        "Откройте найденные записи в списке и уточните статус.",
-        "Сузьте область поиска параметром project, если результатов слишком много.",
-        "Добавьте заметку с ключевыми словами, если контекста не хватает.",
+        "Откройте запись в API или уточните запрос, если это не то.",
+        "Используйте /set <проект>, чтобы сузить поиск.",
     ]
     return ReviewAskResponse(answer=answer, sources=list(hits), next_steps=next_steps)

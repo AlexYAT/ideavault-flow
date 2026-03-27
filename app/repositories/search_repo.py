@@ -8,20 +8,15 @@ from sqlalchemy.orm import Session
 from app.utils.fts_query import build_fts_match
 
 
-def search_fts(
+def search_fts_match(
     db: Session,
-    query: str,
+    match_expr: str,
     *,
     project: str | None = None,
     limit: int = 20,
 ) -> list[dict[str, Any]]:
-    """
-    Run FTS5 MATCH over ``items_fts`` joined to ``items``.
-
-    User text is sanitized via :func:`build_fts_match`; unusable input yields no rows.
-    """
-    match_expr = build_fts_match(query)
-    if match_expr is None:
+    """Execute FTS with a pre-built MATCH expression (caller ensures safety/quoting)."""
+    if not match_expr.strip():
         return []
     base_sql = """
         SELECT items.id, items.text, items.project
@@ -37,3 +32,17 @@ def search_fts(
     stmt = text(base_sql)
     rows = db.execute(stmt, params).mappings().all()
     return [dict(r) for r in rows]
+
+
+def search_fts(
+    db: Session,
+    query: str,
+    *,
+    project: str | None = None,
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    """Run FTS using :func:`build_fts_match` on raw ``query`` string."""
+    match_expr = build_fts_match(query)
+    if match_expr is None:
+        return []
+    return search_fts_match(db, match_expr, project=project, limit=limit)

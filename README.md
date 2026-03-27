@@ -10,6 +10,10 @@
 - Старт API: `init_db()` в **lifespan**
 - Отдельно: `python scripts/init_db.py`
 
+### Поиск (FTS) и ограничения
+
+Запросы в чате и в `/api/search` / `review` проходят **локальную** нормализацию (нижний регистр, пунктуация, отсечение коротких и «слов-паразитов» RU/EN без тяжёлого NLP), затем FTS5: сначала **AND** по ключевым токенам, при пустом результате — **OR**, затем объединение по одному токену. Это заметно лучше переживает фразы вроде «что у меня по MVP?», но **нет** стемминга, эмбеддингов и синонимов — разные словоформы («идея» / «идеи») могут не совпасть, опечатки не исправляются.
+
 ## Структура папок
 
 ```text
@@ -18,7 +22,7 @@ app/
   bot/main.py          # Telegram polling
   bot/handlers/        # тонкие хендлеры → services
   api/routes/
-  db/  repositories/  services/  schemas/
+  db/  repositories/  services/  schemas/  utils/ (fts_query, query_normalize)
 scripts/init_db.py
 tests/
 data/                  # SQLite по умолчанию

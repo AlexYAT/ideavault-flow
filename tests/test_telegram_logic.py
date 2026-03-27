@@ -77,6 +77,6 @@ def test_answer_text_query_uses_review_stub(db_session) -> None:
         message="unique_seed_token",
         current_project=None,
     )
-    assert "Найдено" in out
-    assert "Источники:" in out
+    assert "Нашёл" in out or "релевант" in out.lower()
+    assert "•" in out
     assert "unique_seed_token" in out or "MVP" in out

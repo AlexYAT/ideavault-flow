@@ -3,27 +3,49 @@
 import re
 
 
+def _quote_fts_term(token: str) -> str | None:
+    """Sanitize a single token and return a quoted FTS5 phrase term, or ``None`` if empty."""
+    safe = re.sub(r'[\*:^"()]', "", token)
+    if not safe:
+        return None
+    escaped = safe.replace('"', '""')
+    return f'"{escaped}"'
+
+
+def fts_and_terms(tokens: list[str]) -> str | None:
+    """AND of quoted tokens (all must match)."""
+    parts: list[str] = []
+    for token in tokens:
+        q = _quote_fts_term(token)
+        if q:
+            parts.append(q)
+    if not parts:
+        return None
+    return " AND ".join(parts)
+
+
+def fts_or_terms(tokens: list[str]) -> str | None:
+    """OR of quoted tokens (any may match)."""
+    parts: list[str] = []
+    for token in tokens:
+        q = _quote_fts_term(token)
+        if q:
+            parts.append(q)
+    if not parts:
+        return None
+    return " OR ".join(parts)
+
+
 def build_fts_match(query: str) -> str | None:
     """
-    Convert free text into an FTS5 expression: AND of quoted tokens.
+    Convert free text into an FTS5 expression: AND of quoted tokens (raw split).
 
-    Reduces broken MATCH syntax and accidental operator injection. Returns ``None``
-    when there is nothing usable to search (caller should return an empty result set).
+    For conversational queries prefer :func:`fts_and_terms` on
+    :func:`app.utils.query_normalize.meaningful_search_tokens`.
     """
     cleaned = query.strip()
     if not cleaned:
         return None
-    # drop double-quotes; remaining tokens are quoted individually
     cleaned = cleaned.replace('"', " ")
     tokens = [t for t in re.split(r"\s+", cleaned) if t]
-    parts: list[str] = []
-    for token in tokens:
-        # Remove characters that commonly break MATCH or act as FTS5 syntax
-        safe = re.sub(r'[\*:^"()]', "", token)
-        if not safe:
-            continue
-        escaped = safe.replace('"', '""')
-        parts.append(f'"{escaped}"')
-    if not parts:
-        return None
-    return " AND ".join(parts)
+    return fts_and_terms(tokens)

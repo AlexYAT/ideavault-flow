@@ -55,7 +55,7 @@ def test_review_stub_no_hits(client: TestClient) -> None:
     )
     assert res.status_code == 200
     body = res.json()
-    assert body["answer"] == "По базе ничего не найдено"
+    assert "ничего не нашлось" in body["answer"].lower()
     assert body["sources"] == []
     assert len(body["next_steps"]) >= 2
 
@@ -69,5 +69,5 @@ def test_review_stub_with_hits(client: TestClient) -> None:
     assert res.status_code == 200
     body = res.json()
     assert body["sources"]
-    assert "Найдено" in body["answer"]
+    assert "Нашёл" in body["answer"] or "релевант" in body["answer"].lower()
     assert body["next_steps"]
