@@ -28,23 +28,35 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if raw.lstrip().startswith("+"):
         with bot_session() as db:
             current = project_service.get_current_project(db, uid)
-            item_id = capture_service.capture_from_text(
+            cap = capture_service.capture_from_text(
                 db,
                 raw_text=raw,
                 current_project=current,
                 source=CaptureSource.TELEGRAM,
             )
-        if item_id is None:
+        if cap is None:
             await update.effective_message.reply_text(
                 "Пустая заметка. Добавьте текст после «+», например: + идея для MVP",
             )
             return
         body = strip_capture_prefix(raw).strip()
         scope = f"«{current}»" if current else "глобально (без проекта)"
-        logger.info("user=%s captured item_id=%s project=%s", uid, item_id, current)
-        await update.effective_message.reply_text(
-            f"Сохранено (id {item_id}).\n{body}\nПроект: {scope}",
+        logger.info(
+            "user=%s capture item_id=%s duplicate=%s project=%s",
+            uid,
+            cap.item_id,
+            cap.is_duplicate,
+            current,
         )
+        if cap.is_duplicate:
+            msg = (
+                f"Такая заметка уже есть (id {cap.item_id}).\n"
+                f"{body}\n"
+                f"Проект: {scope}"
+            )
+        else:
+            msg = f"Сохранено (id {cap.item_id}).\n{body}\nПроект: {scope}"
+        await update.effective_message.reply_text(msg)
         return
 
     with bot_session() as db:

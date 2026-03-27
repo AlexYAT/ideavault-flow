@@ -3,8 +3,10 @@
 from sqlalchemy.orm import Session
 
 from app.services.review_service import review_ask_stub
+from app.utils.source_dedupe import dedupe_search_hits
 
 _MAX_MESSAGE_LEN = 3900
+_MAX_TELEGRAM_SOURCES = 3
 
 
 def answer_text_query(
@@ -16,15 +18,16 @@ def answer_text_query(
     """
     Run the same retrieval path as ``/api/review/ask`` and return one Telegram-friendly string.
 
-    ``user_id`` is reserved for future personalization; scope is ``current_project``.
+    Source bullets are deduplicated by normalized text + project (max 3).
     """
     _ = user_id
     result = review_ask_stub(db, message, current_project=current_project)
     parts: list[str] = [result.answer]
 
-    if result.sources:
+    distinct = dedupe_search_hits(result.sources, max_n=_MAX_TELEGRAM_SOURCES)
+    if distinct:
         parts.append("")
-        for src in result.sources[:3]:
+        for src in distinct:
             line = src.text.strip().replace("\n", " ")
             if len(line) > 100:
                 line = line[:97] + "…"

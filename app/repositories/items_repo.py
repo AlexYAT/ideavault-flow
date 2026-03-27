@@ -2,10 +2,11 @@
 
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.tables import Item
+from app.utils.source_dedupe import normalize_note_text
 
 
 def list_items(db: Session, *, project: str | None = None, limit: int = 100) -> Sequence[Item]:
@@ -19,6 +20,29 @@ def list_items(db: Session, *, project: str | None = None, limit: int = 100) -> 
 def get_item(db: Session, item_id: int) -> Item | None:
     """Load a single item by id."""
     return db.get(Item, item_id)
+
+
+def find_item_by_normalized_text(
+    db: Session,
+    *,
+    normalized_text: str,
+    project: str | None,
+) -> Item | None:
+    """
+    Return an existing row in ``project`` (or global ``NULL``) whose body normalizes to
+    ``normalized_text``, or ``None``.
+
+    Uses in-Python comparison so no schema change is required.
+    """
+    stmt = select(Item)
+    if project is None:
+        stmt = stmt.where(Item.project.is_(None))
+    else:
+        stmt = stmt.where(Item.project == project)
+    for row in db.scalars(stmt).all():
+        if normalize_note_text(row.text) == normalized_text:
+            return row
+    return None
 
 
 def create_item(
@@ -44,6 +68,12 @@ def create_item(
     db.commit()
     db.refresh(row)
     return row
+
+
+def count_by_project(db: Session, *, project: str) -> int:
+    """Count items whose ``project`` column equals ``project``."""
+    stmt = select(func.count()).select_from(Item).where(Item.project == project)
+    return int(db.scalar(stmt) or 0)
 
 
 def list_distinct_project_names(db: Session) -> list[str]:
