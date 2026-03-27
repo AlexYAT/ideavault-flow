@@ -30,6 +30,8 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("current", commands.cmd_current))
     app.add_handler(CommandHandler("projects", commands.cmd_projects))
     app.add_handler(CommandHandler("clear", commands.cmd_clear))
+    app.add_handler(CommandHandler("review", commands.cmd_review))
+    app.add_handler(CommandHandler("next", commands.cmd_next))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, messages.on_text))
     return app
 

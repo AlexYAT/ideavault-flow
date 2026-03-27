@@ -7,7 +7,11 @@ from telegram.ext import ContextTypes
 
 from app.bot.db import bot_session
 from app.bot.handlers.common import telegram_user_id
-from app.services import project_service
+from app.services import (
+    next_actions_service,
+    project_service,
+    project_snapshot_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +23,11 @@ _START_HELP = """\
 /current — какой проект выбран
 /projects — список проектов из заметок
 /clear — сбросить проект
+/review — снимок заметок по текущей области
+/next — следующие шаги (эвристики по текстам)
 
 + текст — сохранить заметку
-Обычный текст — поиск по vault (как review)
+Обычный текст — поиск по vault
 """
 
 
@@ -92,3 +98,29 @@ async def cmd_clear(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         project_service.clear_current_project(db, uid)
     logger.info("user=%s cleared project", uid)
     await update.effective_message.reply_text("Проект сброшен. Область поиска — все заметки.")
+
+
+async def cmd_review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Structured snapshot for current or global scope."""
+    _ = context
+    uid = telegram_user_id(update)
+    if uid is None:
+        await update.effective_message.reply_text("Не удалось определить пользователя.")
+        return
+    with bot_session() as db:
+        current = project_service.get_current_project(db, uid)
+        text = project_snapshot_service.format_project_review(db, current_project=current)
+    await update.effective_message.reply_text(text)
+
+
+async def cmd_next(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Deterministic next-action list from saved notes."""
+    _ = context
+    uid = telegram_user_id(update)
+    if uid is None:
+        await update.effective_message.reply_text("Не удалось определить пользователя.")
+        return
+    with bot_session() as db:
+        current = project_service.get_current_project(db, uid)
+        text = next_actions_service.format_next_message(db, current_project=current)
+    await update.effective_message.reply_text(text)
