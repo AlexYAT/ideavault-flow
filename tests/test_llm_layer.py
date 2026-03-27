@@ -4,6 +4,9 @@ import logging
 from unittest.mock import MagicMock
 
 from app.integrations.llm_prompts import (
+    SYSTEM_CHAT,
+    SYSTEM_NEXT,
+    SYSTEM_REVIEW,
     build_chat_user_prompt,
     build_next_user_prompt,
     build_review_user_prompt,
@@ -27,12 +30,31 @@ def test_format_notes_block_truncates_and_includes_id() -> None:
     assert len(block) < len(long)
 
 
+def test_system_chat_bans_soft_phrases_and_limits_format() -> None:
+    assert "В заметках указано" in SYSTEM_CHAT
+    assert "Однако" in SYSTEM_CHAT
+    assert "В целом" in SYSTEM_CHAT
+    assert "трёх" in SYSTEM_CHAT or "трех" in SYSTEM_CHAT
+
+
+def test_system_review_fixes_three_sections() -> None:
+    assert "Фокус:" in SYSTEM_REVIEW
+    assert "Темы:" in SYSTEM_REVIEW
+    assert "Пробелы:" in SYSTEM_REVIEW
+
+
+def test_system_next_requires_numbered_list_only() -> None:
+    assert "нумерованный" in SYSTEM_NEXT
+    assert "3–5" in SYSTEM_NEXT or "3-5" in SYSTEM_NEXT
+
+
 def test_build_chat_prompt_contains_question_and_scope() -> None:
     hits = [SearchHit(id=1, text="note a", project="demo")]
     u = build_chat_user_prompt("что по MVP?", "demo", hits)
     assert "что по MVP" in u
     assert "demo" in u
     assert "note a" in u
+    assert "суть" in u or "system" in u
 
 
 def test_build_review_prompt_lists_snippets_and_gaps() -> None:
@@ -45,6 +67,8 @@ def test_build_review_prompt_lists_snippets_and_gaps() -> None:
     assert "Фокус" in u
     assert "one" in u
     assert "gap1" in u
+    assert "Темы:" in u
+    assert "Пробелы:" in u
 
 
 def test_build_next_prompt_includes_heuristics() -> None:
@@ -55,6 +79,7 @@ def test_build_next_prompt_includes_heuristics() -> None:
     )
     assert "line1" in u
     assert "step a" in u
+    assert "нумерован" in u or "1." in u
 
 
 def test_try_enhance_chat_skips_without_sources() -> None:
