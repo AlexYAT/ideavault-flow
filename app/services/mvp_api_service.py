@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.db.tables import Item
 from app.repositories import items_repo
 from app.schemas.search import SearchHit
+from app.schemas.stats import VaultStatsOut
 from app.services import project_service
 from app.services.project_snapshot_service import format_project_review
 from app.services.search_service import scoped_search
@@ -47,3 +48,13 @@ def list_projects(db: Session) -> list[str]:
 def review_project(db: Session, *, project: str | None = None) -> str:
     """Project snapshot text (same pipeline as Telegram ``/review``: deterministic + optional LLM)."""
     return format_project_review(db, current_project=project)
+
+
+def get_vault_stats(db: Session) -> VaultStatsOut:
+    """Cheap aggregates over ``items`` for health/demo endpoints."""
+    names = items_repo.list_distinct_project_names(db)
+    return VaultStatsOut(
+        items_total=items_repo.count_items_total(db),
+        projects_total=len(names),
+        items_with_project=items_repo.count_items_with_nonnull_project(db),
+    )

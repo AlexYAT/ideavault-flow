@@ -10,10 +10,18 @@ from app.services import mvp_api_service
 router = APIRouter()
 
 
-@router.get("/search", response_model=SearchItemsOut)
+@router.get(
+    "/search",
+    response_model=SearchItemsOut,
+    summary="Full-text search",
+    description=(
+        "FTS5 over note bodies with conversational token normalization. "
+        "Scoped ``project`` includes that project and rows with NULL project."
+    ),
+)
 def search(
-    q: str = Query(..., min_length=1),
-    project: str | None = None,
+    q: str = Query(..., min_length=1, description="Search string"),
+    project: str | None = Query(None, description="Optional scope: this project + unassigned notes"),
     db: Session = Depends(get_db),
 ) -> SearchItemsOut:
     """

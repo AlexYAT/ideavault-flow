@@ -5,7 +5,11 @@ from fastapi import APIRouter
 router = APIRouter()
 
 
-@router.get("/health")
+@router.get(
+    "/health",
+    summary="Liveness",
+    description="Process is up; does not ping the database.",
+)
 def health() -> dict[str, str]:
-    """Return service health (no DB check in skeleton)."""
+    """Return ``{\"status\": \"ok\"}`` for load balancers and quick checks."""
     return {"status": "ok"}

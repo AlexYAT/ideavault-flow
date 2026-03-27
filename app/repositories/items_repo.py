@@ -86,3 +86,14 @@ def list_distinct_project_names(db: Session) -> list[str]:
     )
     rows = db.execute(stmt).scalars().all()
     return [str(name) for name in rows if name]
+
+
+def count_items_total(db: Session) -> int:
+    """All rows in ``items``."""
+    return int(db.scalar(select(func.count()).select_from(Item)) or 0)
+
+
+def count_items_with_nonnull_project(db: Session) -> int:
+    """Rows where ``project`` is set (not ``NULL``)."""
+    stmt = select(func.count()).select_from(Item).where(Item.project.isnot(None))
+    return int(db.scalar(stmt) or 0)

@@ -13,7 +13,15 @@ from app.services import multimodal_capture_service as mmc
 router = APIRouter()
 
 
-@router.post("/capture", response_model=CaptureOut)
+@router.post(
+    "/capture",
+    response_model=CaptureOut,
+    summary="Multimodal capture",
+    description=(
+        "Multipart: required `file` (image). Optional `caption` and `project`. "
+        "Vision needs `LLM_ENABLED` + `OPENAI_API_KEY`; otherwise a text fallback note is stored."
+    ),
+)
 def capture_multimodal(
     file: UploadFile | None = File(default=None, description="Image file (jpeg/png/webp/gif)"),
     caption: str | None = Form(default=None, description="Optional note text / context"),

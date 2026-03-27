@@ -11,7 +11,12 @@ from app.services.review_service import review_ask_stub
 router = APIRouter()
 
 
-@router.get("/review", response_model=ReviewSnapshotResponse)
+@router.get(
+    "/review",
+    response_model=ReviewSnapshotResponse,
+    summary="Project snapshot",
+    description="Same output style as Telegram `/review` (focus, themes, gaps); optional LLM polish.",
+)
 def review_snapshot(
     project: str | None = Query(None, description="Scope to this project; omit for all notes"),
     db: Session = Depends(get_db),
@@ -21,7 +26,12 @@ def review_snapshot(
     return ReviewSnapshotResponse(project=project, review=text)
 
 
-@router.post("/review/ask", response_model=ReviewAskResponse)
+@router.post(
+    "/review/ask",
+    response_model=ReviewAskResponse,
+    summary="Ask the vault (retrieval + answer)",
+    description="Runs FTS retrieval, returns deterministic/LLM-styled answer with `sources` and `next_steps`.",
+)
 def review_ask(body: ReviewAskRequest, db: Session = Depends(get_db)) -> ReviewAskResponse:
     """Retrieve with FTS and return stub answer, sources, and follow-ups."""
     return review_ask_stub(

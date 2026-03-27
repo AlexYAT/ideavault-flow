@@ -14,10 +14,15 @@ _DEFAULT_LIMIT = 100
 _MAX_LIMIT = 500
 
 
-@router.get("/items", response_model=list[ItemRead])
+@router.get(
+    "/items",
+    response_model=list[ItemRead],
+    summary="List notes",
+    description="Recent rows from `items`, newest first.",
+)
 def list_items(
-    project: str | None = None,
-    limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
+    project: str | None = Query(None, description="Filter by project name"),
+    limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT, description="Max rows"),
     db: Session = Depends(get_db),
 ) -> list[ItemRead]:
     """List recent items (``created_at`` desc), optional filter by project."""
@@ -25,7 +30,12 @@ def list_items(
     return [ItemRead.model_validate(r) for r in rows]
 
 
-@router.post("/items", response_model=ItemRead)
+@router.post(
+    "/items",
+    response_model=ItemRead,
+    summary="Create note",
+    description="Insert a text note (JSON body). For images use `POST /capture`.",
+)
 def create_item(payload: ItemCreate, db: Session = Depends(get_db)) -> ItemRead:
     """Create an item; ``created_at`` defaults in the database."""
     row = items_repo.create_item(
