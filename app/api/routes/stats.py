@@ -14,7 +14,7 @@ router = APIRouter()
     "/stats",
     response_model=VaultStatsOut,
     summary="Vault counters",
-    description="Returns total notes, distinct project count, and notes assigned to a project. Single cheap read per counter.",
+    description="Vault + RAG aggregates: items/projects plus knowledge documents, chunks, and projects-with-docs.",
 )
 def vault_stats(db: Session = Depends(get_db)) -> VaultStatsOut:
     """Aggregated counts over the `items` table for quick demo checks."""

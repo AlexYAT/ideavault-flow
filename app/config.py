@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 200
     llm_debug_logging: bool = False
 
+    # Telegram voice → OpenAI Speech-to-Text (Whisper-compatible endpoint)
+    openai_stt_model: str = "whisper-1"
+    stt_timeout_seconds: float = 60.0
+
 
 @lru_cache
 def get_settings() -> Settings:

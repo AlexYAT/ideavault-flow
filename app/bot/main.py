@@ -9,7 +9,7 @@ import sys
 
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
-from app.bot.handlers import commands, messages
+from app.bot.handlers import commands, messages, project_picker, rag_commands, voice
 from app.config import settings
 from app.db.base import init_db
 from app.logging import setup_logging
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def build_application() -> Application:
-    """Register command and text handlers (polling only; no photo/voice in v1)."""
+    """Register command, text, and voice handlers (long polling)."""
     token = settings.telegram_bot_token.strip()
     if not token:
         raise RuntimeError(
@@ -29,10 +29,19 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("set", commands.cmd_set))
     app.add_handler(CommandHandler("current", commands.cmd_current))
     app.add_handler(CommandHandler("projects", commands.cmd_projects))
+    app.add_handler(CommandHandler("project", project_picker.cmd_project))
+    app.add_handler(project_picker.project_callback_handler())
     app.add_handler(CommandHandler("clear", commands.cmd_clear))
+    app.add_handler(CommandHandler("resetchat", commands.cmd_resetchat))
     app.add_handler(CommandHandler("review", commands.cmd_review))
     app.add_handler(CommandHandler("next", commands.cmd_next))
+    app.add_handler(CommandHandler("mode", rag_commands.cmd_mode))
+    app.add_handler(CommandHandler("rag_bind", rag_commands.cmd_rag_bind))
+    app.add_handler(CommandHandler("rag_paths", rag_commands.cmd_rag_paths))
+    app.add_handler(CommandHandler("index", rag_commands.cmd_index))
+    app.add_handler(CommandHandler("stats", rag_commands.cmd_stats))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, messages.on_text))
+    app.add_handler(MessageHandler(filters.VOICE, voice.on_voice))
     return app
 
 

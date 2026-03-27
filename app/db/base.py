@@ -7,7 +7,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
-from app.db import fts
+from app.db import fts, rag_fts
+from app.db.migrate import apply_sqlite_migrations
 from app.db.tables import Base
 
 def _sqlite_connect_args(url: str) -> dict:
@@ -36,7 +37,9 @@ def init_db() -> None:
     TODO: migrate to Alembic when schema evolves.
     """
     Base.metadata.create_all(bind=engine)
+    apply_sqlite_migrations(engine)
     fts.ensure_fts(engine)
+    rag_fts.ensure_rag_fts(engine)
 
 
 def get_db() -> Generator[Session, None, None]:

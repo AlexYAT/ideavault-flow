@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.db.tables import Item
-from app.repositories import items_repo
+from app.repositories import items_repo, rag_repo
 from app.schemas.search import SearchHit
 from app.schemas.stats import VaultStatsOut
 from app.services import project_service
@@ -51,10 +51,13 @@ def review_project(db: Session, *, project: str | None = None) -> str:
 
 
 def get_vault_stats(db: Session) -> VaultStatsOut:
-    """Cheap aggregates over ``items`` for health/demo endpoints."""
+    """Cheap aggregates over ``items`` + RAG tables for demo endpoints."""
     names = items_repo.list_distinct_project_names(db)
     return VaultStatsOut(
         items_total=items_repo.count_items_total(db),
         projects_total=len(names),
         items_with_project=items_repo.count_items_with_nonnull_project(db),
+        rag_documents_total=rag_repo.count_documents(db),
+        rag_chunks_total=rag_repo.count_chunks(db),
+        rag_projects_with_docs=rag_repo.count_projects_with_documents(db),
     )

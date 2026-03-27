@@ -15,3 +15,6 @@ def test_vault_stats(path: str, client: TestClient) -> None:
     assert body["items_total"] == 3
     assert body["projects_total"] == 2
     assert body["items_with_project"] == 2
+    assert body["rag_documents_total"] == 0
+    assert body["rag_chunks_total"] == 0
+    assert body["rag_projects_with_docs"] == 0

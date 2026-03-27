@@ -22,7 +22,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.db import fts
+from app.db import fts, rag_fts
 from app.db.base import get_db
 from app.db.tables import Base
 from app.main import app
@@ -38,6 +38,7 @@ def db_session() -> Generator[Session, None, None]:
     )
     Base.metadata.create_all(bind=engine)
     fts.ensure_fts(engine)
+    rag_fts.ensure_rag_fts(engine)
     session_factory = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
     session = session_factory()
     try:
@@ -56,6 +57,7 @@ def client() -> Generator[TestClient, None, None]:
     )
     Base.metadata.create_all(bind=engine)
     fts.ensure_fts(engine)
+    rag_fts.ensure_rag_fts(engine)
     session_factory = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
 
     def override_get_db() -> Generator[Session, None, None]:

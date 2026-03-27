@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routes import capture, health, items, projects, review, search, stats
+from app.api.routes import capture, health, items, projects, rag_index, review, search, stats
 from app.db.base import init_db
 from app.logging import setup_logging
 
@@ -40,6 +40,7 @@ for _router, _tag in (
     (projects.router, "projects"),
     (review.router, "review"),
     (capture.router, "capture"),
+    (rag_index.router, "rag"),
 ):
     app.include_router(_router, prefix=_API_PREFIX, tags=[_tag])
     app.include_router(_router, prefix="", tags=[_tag])
