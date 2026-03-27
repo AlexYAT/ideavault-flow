@@ -6,6 +6,7 @@ from enum import StrEnum
 class ItemStatus(StrEnum):
     """Lifecycle state of a captured item."""
 
+    NEW = "new"
     INBOX = "inbox"
     # TODO: ACTIVE, DONE, ARCHIVED as the product matures
 

@@ -16,11 +16,6 @@ def get_current_project(db: Session, user_id: str) -> str | None:
     return row.current_project if row else None
 
 
-def list_distinct_projects(db: Session, limit: int = 200) -> list[str]:
-    """List projects seen on items. TODO: dedicated projects table."""
-    rows = items_repo.list_items(db, limit=limit)
-    names: set[str] = set()
-    for r in rows:
-        if r.project:
-            names.add(r.project)
-    return sorted(names)
+def list_distinct_projects(db: Session) -> list[str]:
+    """Distinct project names from items (non-null), sorted by name."""
+    return items_repo.list_distinct_project_names(db)

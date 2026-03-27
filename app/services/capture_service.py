@@ -27,7 +27,7 @@ def capture_from_text(
         db,
         text=body,
         project=current_project,
-        status=ItemStatus.INBOX.value,
+        status=ItemStatus.NEW.value,
         priority=ItemPriority.NORMAL.value,
         source=source.value,
         raw_payload_ref=raw_payload_ref,

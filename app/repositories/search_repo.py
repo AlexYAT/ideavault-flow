@@ -5,6 +5,8 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.utils.fts_query import build_fts_match
+
 
 def search_fts(
     db: Session,
@@ -14,21 +16,20 @@ def search_fts(
     limit: int = 20,
 ) -> list[dict[str, Any]]:
     """
-    Execute FTS against `items_fts` joined to `items`.
+    Run FTS5 MATCH over ``items_fts`` joined to ``items``.
 
-    TODO:
-    - bind project + global-null semantics from chat/capture rules
-    - use bm25() for ranking when available
-              - parameterize query safely (FTS syntax)
+    User text is sanitized via :func:`build_fts_match`; unusable input yields no rows.
     """
-    # TODO: escape user input for FTS special characters; use parameterized match
+    match_expr = build_fts_match(query)
+    if match_expr is None:
+        return []
     base_sql = """
         SELECT items.id, items.text, items.project
         FROM items_fts
         JOIN items ON items.id = items_fts.rowid
         WHERE items_fts MATCH :q
     """
-    params: dict[str, Any] = {"q": query, "lim": limit}
+    params: dict[str, Any] = {"q": match_expr, "lim": limit}
     if project is not None:
         base_sql += " AND (items.project = :proj OR items.project IS NULL)"
         params["proj"] = project

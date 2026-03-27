@@ -1,0 +1,42 @@
+"""Pytest fixtures: isolated in-memory SQLite + dependency overrides."""
+
+from collections.abc import Generator
+from unittest import mock
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from app.db import fts
+from app.db.base import get_db
+from app.db.tables import Base
+from app.main import app
+
+
+@pytest.fixture
+def client() -> Generator[TestClient, None, None]:
+    """TestClient with ``get_db`` bound to a fresh in-memory SQLite database."""
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    fts.ensure_fts(engine)
+    session_factory = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
+
+    def override_get_db() -> Generator[Session, None, None]:
+        db = session_factory()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+    # Avoid touching the developer's on-disk SQLite during app lifespan startup.
+    with mock.patch("app.main.init_db"):
+        with TestClient(app) as test_client:
+            yield test_client
+    app.dependency_overrides.clear()

@@ -9,8 +9,8 @@ from app.db.tables import Item
 
 
 def list_items(db: Session, *, project: str | None = None, limit: int = 100) -> Sequence[Item]:
-    """Return recent items, optionally filtered by project. TODO: cursor pagination."""
-    stmt = select(Item).order_by(Item.id.desc()).limit(limit)
+    """Return recent items by ``created_at`` desc, optionally filtered by project."""
+    stmt = select(Item).order_by(Item.created_at.desc()).limit(limit)
     if project is not None:
         stmt = stmt.where(Item.project == project)
     return db.scalars(stmt).all()
@@ -31,7 +31,7 @@ def create_item(
     source: str,
     raw_payload_ref: str | None = None,
 ) -> Item:
-    """Insert a new item. TODO: validate enums, attachments."""
+    """Insert a new item."""
     row = Item(
         text=text,
         project=project,
@@ -44,3 +44,15 @@ def create_item(
     db.commit()
     db.refresh(row)
     return row
+
+
+def list_distinct_project_names(db: Session) -> list[str]:
+    """Return unique non-null project names sorted alphabetically."""
+    stmt = (
+        select(Item.project)
+        .where(Item.project.isnot(None))
+        .distinct()
+        .order_by(Item.project.asc())
+    )
+    rows = db.execute(stmt).scalars().all()
+    return [str(name) for name in rows if name]

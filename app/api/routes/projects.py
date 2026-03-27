@@ -17,11 +17,10 @@ class CurrentProjectBody(BaseModel):
     project: str | None
 
 
-@router.get("/projects")
-def list_projects(db: Session = Depends(get_db)) -> dict[str, list[str]]:
-    """Distinct project names inferred from items."""
-    names = project_service.list_distinct_projects(db)
-    return {"projects": names}
+@router.get("/projects", response_model=list[str])
+def list_projects(db: Session = Depends(get_db)) -> list[str]:
+    """Distinct non-null project names from items, sorted alphabetically."""
+    return project_service.list_distinct_projects(db)
 
 
 @router.post("/projects/current")

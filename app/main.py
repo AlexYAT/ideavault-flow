@@ -1,19 +1,28 @@
 """FastAPI application entry."""
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.api.routes import health, items, projects, review, search
-from app.config import settings
 from app.db.base import init_db
 from app.logging import setup_logging
 
 setup_logging()
-init_db()
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Initialize database schema on application startup."""
+    init_db()
+    yield
+
 
 app = FastAPI(
     title="IdeaVault Flow API",
-    description="Review, search, and RAG over captured ideas (MVP skeleton).",
+    description="Review, search, and RAG over captured ideas (MVP backend).",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.include_router(health.router, prefix="/api", tags=["health"])

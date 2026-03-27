@@ -18,7 +18,7 @@ class Item(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     project: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    status: Mapped[str] = mapped_column(String(64), nullable=False, default="inbox")
+    status: Mapped[str] = mapped_column(String(64), nullable=False, default="new")
     priority: Mapped[str] = mapped_column(String(32), nullable=False, default="normal")
     source: Mapped[str] = mapped_column(String(64), nullable=False)
     raw_payload_ref: Mapped[str | None] = mapped_column(String(512), nullable=True)
