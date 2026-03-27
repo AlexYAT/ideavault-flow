@@ -1,5 +1,18 @@
 """Pytest fixtures: isolated in-memory SQLite + dependency overrides."""
 
+# Default: no live LLM in tests (user .env may enable it).
+import os
+
+os.environ.setdefault("LLM_ENABLED", "false")
+os.environ.setdefault("OPENAI_API_KEY", "")
+
+try:
+    from app.config import get_settings as _get_settings
+
+    _get_settings.cache_clear()
+except Exception:
+    pass
+
 from collections.abc import Generator
 from unittest import mock
 

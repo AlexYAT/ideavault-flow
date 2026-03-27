@@ -1,0 +1,166 @@
+"""LLM layer: prompts, availability, graceful fallback (no live OpenAI calls)."""
+
+import logging
+from unittest.mock import MagicMock
+
+from app.integrations.llm_prompts import (
+    build_chat_user_prompt,
+    build_next_user_prompt,
+    build_review_user_prompt,
+    format_notes_block,
+)
+from app.integrations.llm_client import OpenAIChatClient
+from app.config import Settings
+from app.schemas.search import SearchHit
+from app.services.llm_enhancement import try_enhance_chat
+
+
+def test_format_notes_block_truncates_and_includes_id() -> None:
+    long = "x" * 500
+    block = format_notes_block(
+        [SearchHit(id=7, text=long, project="p")],
+        max_items=3,
+        max_chars_per_note=50,
+    )
+    assert "id 7" in block
+    assert "проект: p" in block
+    assert len(block) < len(long)
+
+
+def test_build_chat_prompt_contains_question_and_scope() -> None:
+    hits = [SearchHit(id=1, text="note a", project="demo")]
+    u = build_chat_user_prompt("что по MVP?", "demo", hits)
+    assert "что по MVP" in u
+    assert "demo" in u
+    assert "note a" in u
+
+
+def test_build_review_prompt_lists_snippets_and_gaps() -> None:
+    u = build_review_user_prompt(
+        "Фокус: проект «X»",
+        3,
+        ["one", "two"],
+        ["gap1"],
+    )
+    assert "Фокус" in u
+    assert "one" in u
+    assert "gap1" in u
+
+
+def test_build_next_prompt_includes_heuristics() -> None:
+    u = build_next_user_prompt(
+        "course",
+        ["line1"],
+        ["step a"],
+    )
+    assert "line1" in u
+    assert "step a" in u
+
+
+def test_try_enhance_chat_skips_without_sources() -> None:
+    s = Settings(llm_enabled=True, openai_api_key="sk-test")
+    out = try_enhance_chat(
+        s,
+        message="hi",
+        current_project=None,
+        sources=[],
+    )
+    assert out is None
+
+
+def test_try_enhance_chat_skips_when_disabled() -> None:
+    s = Settings(llm_enabled=False)
+    out = try_enhance_chat(
+        s,
+        message="hi",
+        current_project=None,
+        sources=[SearchHit(id=1, text="x", project=None)],
+    )
+    assert out is None
+
+
+def test_try_enhance_chat_logs_skipped_when_disabled(caplog) -> None:
+    s = Settings(llm_enabled=False)
+    with caplog.at_level(logging.INFO):
+        try_enhance_chat(
+            s,
+            message="hi",
+            current_project="proj-a",
+            sources=[SearchHit(id=1, text="x", project="proj-a")],
+        )
+    assert "llm_skipped" in caplog.text
+    assert "disabled" in caplog.text
+
+
+def test_try_enhance_chat_fallback_when_complete_fails(monkeypatch, caplog) -> None:
+    mock_client = MagicMock()
+    mock_client.model_name = "gpt-4o-mini"
+    mock_client.complete = MagicMock(return_value=(None, "timeout"))
+    monkeypatch.setattr(
+        "app.services.llm_enhancement.resolve_llm_client",
+        lambda _settings: (mock_client, None),
+    )
+    s = Settings(llm_enabled=True, openai_api_key="sk-x")
+    with caplog.at_level(logging.INFO):
+        out = try_enhance_chat(
+            s,
+            message="q",
+            current_project="p",
+            sources=[SearchHit(id=1, text="a", project="p")],
+        )
+    assert out is None
+    assert "llm_fallback_used" in caplog.text
+    assert "timeout" in caplog.text
+
+
+def test_openai_client_from_settings_returns_none_when_disabled(monkeypatch) -> None:
+    from app.config import get_settings
+
+    monkeypatch.delenv("LLM_ENABLED", raising=False)
+    get_settings.cache_clear()
+    s = Settings(
+        llm_enabled=False,
+        openai_api_key="sk-test",
+    )
+    assert OpenAIChatClient.from_settings(s) is None
+    get_settings.cache_clear()
+
+
+def test_openai_client_from_settings_returns_none_when_no_key(monkeypatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    s = Settings(llm_enabled=True, openai_api_key="")
+    assert OpenAIChatClient.from_settings(s) is None
+
+
+def test_chat_falls_back_to_deterministic_when_enhancement_returns_none(
+    db_session,
+    monkeypatch,
+) -> None:
+    from app.repositories import items_repo
+    from app.services import chat_service
+
+    monkeypatch.setattr(
+        "app.services.llm_enhancement.try_enhance_chat",
+        lambda *_a, **_k: None,
+    )
+    items_repo.create_item(
+        db_session,
+        text="only seed alpha",
+        project="d",
+        status="new",
+        priority="normal",
+        source="api",
+    )
+    out = chat_service.answer_text_query(
+        db_session,
+        "1",
+        "only seed alpha",
+        current_project="d",
+    )
+    assert "Нашёл" in out or "релевант" in out.lower()
+
+
+def test_openai_client_builds_when_enabled_and_key(monkeypatch) -> None:
+    s = Settings(llm_enabled=True, openai_api_key="sk-x", openai_model="gpt-4o-mini", llm_timeout_seconds=10.0)
+    c = OpenAIChatClient.from_settings(s)
+    assert c is not None

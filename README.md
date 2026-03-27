@@ -23,7 +23,8 @@ app/
   bot/main.py          # Telegram polling
   bot/handlers/        # тонкие хендлеры → services
   api/routes/
-  db/  repositories/  services/  schemas/  utils/ (fts_query, query_normalize)
+  db/  repositories/  services/  schemas/  utils/
+  integrations/        # llm_client, llm_prompts (OpenAI поверх retrieval)
 scripts/init_db.py
 tests/
 data/                  # SQLite по умолчанию
@@ -57,6 +58,29 @@ pip install -r requirements.txt
 | `DATABASE_URL` | По умолчанию `sqlite:///./data/ideavault.db` |
 | `TELEGRAM_BOT_TOKEN` | Токен от [@BotFather](https://t.me/BotFather) — **нужен для бота** |
 | `LOG_LEVEL` | Например `INFO` |
+| `LLM_ENABLED` | `false` по умолчанию; при `true` нужен `OPENAI_API_KEY` |
+| `OPENAI_API_KEY` | Ключ OpenAI API |
+| `OPENAI_MODEL` | Например `gpt-4o-mini` |
+| `LLM_TIMEOUT_SECONDS` | Таймаут HTTP к Chat Completions (сек.) |
+| `LLM_TEMPERATURE` | Температура выборки модели; по умолчанию **0.2** (ниже — стабильнее и обычно короче) |
+| `LLM_MAX_TOKENS` | Максимум токенов в ответе модели; по умолчанию **200** — короче ответы, проще уложиться в лимиты Telegram |
+| `LLM_DEBUG_LOGGING` | `false` по умолчанию; при `true` — доп. безопасные поля в логах (см. ниже) |
+
+Для **опирающегося на заметки** режима разумный диапазон **0.1–0.3**: ближе к 0.1 — предсказуемее и суше, к 0.3 — чуть больше вариативности. Значение не задано в `.env` → используется **0.2**.
+
+Для **длины ответа** ориентир **120–220** токенов: меньше — короче и предсказуемее, больше — развёрнутее, но риск выйти за удобный размер сообщения в чате.
+
+**Слой LLM:** поиск и выбор заметок **не меняются** — сначала всегда retrieval/эвристики, затем опционально короткая генерация **только** по переданным фрагментам заметок (обычный текст в боте, при необходимости `/review` и `/next`). Если LLM выключен, нет ключа, ошибка или таймаут — остаётся прежний детерминированный ответ.
+
+### Логи LLM в терминале
+
+При `LOG_LEVEL=INFO` и запущенном боте/API в консоль пишутся строки с префиксом `llm ` и полем `event=`:
+
+- `llm_skipped` — LLM не вызывался: `reason=` одно из `disabled`, `no_key`, `no_sources`; есть `mode=` (`chat` / `review` / `next`), `scope=` (имя проекта или `global`), `notes_count`.
+- `llm_request_started` / `llm_request_success` / `llm_request_failed` — попытка вызова API: модель, `temperature`, `max_tokens`, задержка `latency_ms`, при успехе `response_chars`; при ошибке `reason=` (`timeout`, `http_error`, `invalid_response`, `unexpected_exception`). **Не логируются** ключ API, полный prompt и полный ответ.
+- `llm_fallback_used` — после неудачного запроса включён прежний детерминированный ответ; `reason=` совпадает с причиной сбоя запроса.
+
+`LLM_DEBUG_LOGGING=true` добавляет в строку старта запроса безопасные детали: укороченный `query_preview`, список `note_ids`, `prompt_chars`. Секреты по-прежнему не выводятся.
 
 ## Инициализация базы
 

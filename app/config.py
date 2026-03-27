@@ -20,6 +20,15 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
+    # Optional OpenAI layer (retrieval unchanged; LLM only formats grounded context)
+    llm_enabled: bool = False
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    llm_timeout_seconds: float = 25.0
+    llm_temperature: float = 0.2
+    llm_max_tokens: int = 200
+    llm_debug_logging: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

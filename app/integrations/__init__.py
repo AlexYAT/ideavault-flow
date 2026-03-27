@@ -1,1 +1,1 @@
-"""External systems (Telegram API, future LLM providers, object storage)."""
+"""External systems: optional OpenAI client (``llm_client``), prompts (``llm_prompts``)."""

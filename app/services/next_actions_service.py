@@ -1,16 +1,22 @@
-"""Deterministic «/next» suggestions from note text (no LLM)."""
+"""Deterministic «/next» suggestions; optional LLM rewrite grounded in notes."""
 
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
+from app.db.tables import Item
 from app.repositories import items_repo
+from app.services.llm_enhancement import try_enhance_next
+
+
+def _rows_for_scope(db: Session, *, current_project: str | None, limit: int = 50) -> list[Item]:
+    if current_project is not None:
+        return list(items_repo.list_items(db, project=current_project, limit=limit))
+    return list(items_repo.list_items(db, project=None, limit=limit))
 
 
 def _load_corpus(db: Session, *, current_project: str | None, limit: int = 50) -> tuple[str, int]:
     """Lowercased joined texts and note count for the active scope."""
-    if current_project is not None:
-        rows = list(items_repo.list_items(db, project=current_project, limit=limit))
-    else:
-        rows = list(items_repo.list_items(db, project=None, limit=limit))
+    rows = _rows_for_scope(db, current_project=current_project, limit=limit)
     return " ".join(r.text.lower() for r in rows), len(rows)
 
 
@@ -70,8 +76,21 @@ def suggest_next_actions(db: Session, *, current_project: str | None) -> list[st
 
 
 def format_next_message(db: Session, *, current_project: str | None) -> str:
-    """Telegram-ready multiline message."""
+    """Telegram-ready multiline message; optional LLM if notes exist and LLM on."""
     steps = suggest_next_actions(db, current_project=current_project)
-    header = "Дальше (по эвристикам из заметок):"
-    body = "\n".join(f"{i}. {s}" for i, s in enumerate(steps, start=1))
-    return f"{header}\n{body}"
+    baseline_header = "Дальше (по эвристикам из заметок):"
+    baseline = f"{baseline_header}\n" + "\n".join(f"{i}. {s}" for i, s in enumerate(steps, start=1))
+
+    rows = _rows_for_scope(db, current_project=current_project, limit=30)
+    if not rows:
+        return baseline
+
+    note_lines = [r.text.strip().replace("\n", " ") for r in rows[:20]]
+    enhanced = try_enhance_next(
+        get_settings(),
+        current_project=current_project,
+        note_lines=note_lines,
+        heuristic_steps=steps,
+        source_note_ids=tuple(r.id for r in rows[:20]),
+    )
+    return enhanced if enhanced else baseline
