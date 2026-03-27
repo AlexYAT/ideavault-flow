@@ -1,6 +1,24 @@
 """HTTP API smoke tests against an isolated in-memory database."""
 
+from app.config import get_settings
 from fastapi.testclient import TestClient
+
+
+def test_post_items_401_without_x_api_key_when_api_key_set(monkeypatch, client: TestClient) -> None:
+    monkeypatch.setenv("API_KEY", "unit-test-secret")
+    get_settings.cache_clear()
+    try:
+        denied = client.post("/api/items", json={"text": "n", "source": "api"})
+        assert denied.status_code == 401
+        ok = client.post(
+            "/api/items",
+            json={"text": "n", "source": "api"},
+            headers={"X-API-Key": "unit-test-secret"},
+        )
+        assert ok.status_code == 200
+    finally:
+        monkeypatch.delenv("API_KEY", raising=False)
+        get_settings.cache_clear()
 
 
 def test_health_ok(client: TestClient) -> None:

@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
+    #: If non-empty, selected POST routes require header ``X-API-Key`` with the same value.
+    api_key: str = ""
 
     # Optional OpenAI layer (retrieval unchanged; LLM only formats grounded context)
     llm_enabled: bool = False

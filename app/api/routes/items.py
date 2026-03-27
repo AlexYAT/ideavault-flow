@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.auth import require_api_key
 from app.db.base import get_db
 from app.repositories import items_repo
 from app.schemas.item import ItemCreate, ItemRead
@@ -36,7 +37,11 @@ def list_items(
     summary="Create note",
     description="Insert a text note (JSON body). For images use `POST /capture`.",
 )
-def create_item(payload: ItemCreate, db: Session = Depends(get_db)) -> ItemRead:
+def create_item(
+    payload: ItemCreate,
+    db: Session = Depends(get_db),
+    _auth: None = Depends(require_api_key),
+) -> ItemRead:
     """Create an item; ``created_at`` defaults in the database."""
     row = items_repo.create_item(
         db,

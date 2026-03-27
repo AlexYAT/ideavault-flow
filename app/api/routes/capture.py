@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.auth import require_api_key
 from app.config import get_settings
 from app.db.base import get_db
 from app.schemas.capture import CaptureOut
@@ -27,6 +28,7 @@ def capture_multimodal(
     caption: str | None = Form(default=None, description="Optional note text / context"),
     project: str | None = Form(default=None, description="Optional project name"),
     db: Session = Depends(get_db),
+    _auth: None = Depends(require_api_key),
 ) -> CaptureOut:
     """
     Save one note from an uploaded image and optional caption.

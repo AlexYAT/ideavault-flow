@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.auth import require_api_key
 from app.db.base import get_db
 from app.services import mvp_api_service, project_service
 
@@ -35,7 +36,11 @@ def list_projects(db: Session = Depends(get_db)) -> list[str]:
     summary="Set current project",
     description="Mirrors bot `/set` / `/clear` for API-only clients.",
 )
-def set_current(body: CurrentProjectBody, db: Session = Depends(get_db)) -> dict[str, str | None]:
+def set_current(
+    body: CurrentProjectBody,
+    db: Session = Depends(get_db),
+    _auth: None = Depends(require_api_key),
+) -> dict[str, str | None]:
     """API equivalent of /set and /clear."""
     project_service.set_current_project(db, body.user_id, body.project)
     return {"current_project": body.project}

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.auth import require_api_key
 from app.db.base import get_db
 from app.rag.indexer import reindex_project_scope
 
@@ -33,6 +34,10 @@ class RagIndexRequest(BaseModel):
         "then fetches GitHub raw files when a binding exists."
     ),
 )
-def rag_reindex(body: RagIndexRequest, db: Session = Depends(get_db)) -> dict[str, Any]:
+def rag_reindex(
+    body: RagIndexRequest,
+    db: Session = Depends(get_db),
+    _auth: None = Depends(require_api_key),
+) -> dict[str, Any]:
     """Run :func:`app.rag.indexer.reindex_project_scope` and return counters."""
     return reindex_project_scope(db, project=body.project)
