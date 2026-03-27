@@ -12,6 +12,13 @@ class SearchHit(BaseModel):
 
 
 class SearchOut(BaseModel):
-    """Response body for GET /api/search."""
+    """Legacy shape (hits); prefer :class:`SearchItemsOut` for new clients."""
 
     hits: list[SearchHit] = Field(default_factory=list, description="Matching items")
+
+
+class SearchItemsOut(BaseModel):
+    """GET /search response: echoes ``query`` and returns hits as ``items``."""
+
+    query: str = Field(..., description="Original search string")
+    items: list[SearchHit] = Field(default_factory=list, description="Matching notes")

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.base import get_db
 from app.repositories import items_repo
 from app.schemas.item import ItemCreate, ItemRead
+from app.services import mvp_api_service
 
 router = APIRouter()
 
@@ -20,7 +21,7 @@ def list_items(
     db: Session = Depends(get_db),
 ) -> list[ItemRead]:
     """List recent items (``created_at`` desc), optional filter by project."""
-    rows = items_repo.list_items(db, project=project, limit=limit)
+    rows = mvp_api_service.get_all_items(db, project=project, limit=limit)
     return [ItemRead.model_validate(r) for r in rows]
 
 

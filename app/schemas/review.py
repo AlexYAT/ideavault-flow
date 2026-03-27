@@ -22,3 +22,10 @@ class ReviewAskResponse(BaseModel):
     answer: str
     sources: list[SearchHit]
     next_steps: list[str]
+
+
+class ReviewSnapshotResponse(BaseModel):
+    """GET /review snapshot (same text as bot command ``/review``)."""
+
+    project: str | None = Field(None, description="Scoped project, or null for all notes")
+    review: str = Field(..., description="Formatted snapshot body")

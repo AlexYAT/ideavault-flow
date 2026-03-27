@@ -94,11 +94,28 @@ python scripts/init_db.py
 
 ## Запуск FastAPI
 
+Точка входа приложения — **`app.main:app`** (роуты подключаются из `app/api/routes/`). Тот же процесс не требуется для бота; API и Telegram запускаются **независимо**.
+
 ```powershell
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Документация: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) — удобнее, чем `curl` в PowerShell.
+
+### Endpoints (MVP JSON)
+
+Каждый маршрут доступен **и с префиксом `/api`**, **и без него** (дубликат для простых клиентов).
+
+| Метод | Путь | Назначение |
+|--------|------|------------|
+| GET | `/health`, `/api/health` | `{"status": "ok"}` |
+| GET | `/items`, `/api/items` | Список заметок (query: `project`, `limit`) |
+| POST | `/items`, `/api/items` | Создать заметку (тело см. `/docs`) |
+| GET | `/search`, `/api/search` | `?q=...` → `{"query": "...", "items": [...]}` |
+| GET | `/projects`, `/api/projects` | Список уникальных проектов |
+| POST | `/projects/current`, `/api/projects/current` | «Текущий проект» для `user_id` (как в боте) |
+| GET | `/review`, `/api/review` | `?project=...` опционально → `{"project": ..., "review": "..."}` (логика как у `/review` в боте) |
+| POST | `/review/ask`, `/api/review/ask` | Вопрос + retrieval (stub-ответ с `sources` / `next_steps`) |
 
 ## Запуск Telegram-бота
 

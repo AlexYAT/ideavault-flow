@@ -25,11 +25,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.include_router(health.router, prefix="/api", tags=["health"])
-app.include_router(items.router, prefix="/api", tags=["items"])
-app.include_router(search.router, prefix="/api", tags=["search"])
-app.include_router(projects.router, prefix="/api", tags=["projects"])
-app.include_router(review.router, prefix="/api", tags=["review"])
+# `/api/...` — основной префикс; дубликаты без префикса — для простого MVP/сдачи заданий.
+_API_PREFIX = "/api"
+for _router, _tag in (
+    (health.router, "health"),
+    (items.router, "items"),
+    (search.router, "search"),
+    (projects.router, "projects"),
+    (review.router, "review"),
+):
+    app.include_router(_router, prefix=_API_PREFIX, tags=[_tag])
+    app.include_router(_router, prefix="", tags=[_tag])
 
 
 @app.get("/")

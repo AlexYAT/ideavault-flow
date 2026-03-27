@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.base import get_db
-from app.services import project_service
+from app.services import mvp_api_service, project_service
 
 router = APIRouter()
 
@@ -20,7 +20,7 @@ class CurrentProjectBody(BaseModel):
 @router.get("/projects", response_model=list[str])
 def list_projects(db: Session = Depends(get_db)) -> list[str]:
     """Distinct non-null project names from items, sorted alphabetically."""
-    return project_service.list_distinct_projects(db)
+    return mvp_api_service.list_projects(db)
 
 
 @router.post("/projects/current")
