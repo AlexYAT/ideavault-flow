@@ -5,7 +5,9 @@ from unittest.mock import MagicMock
 
 from app.integrations.llm_prompts import (
     SYSTEM_CHAT,
+    SYSTEM_CHAT_NO_SOURCES,
     SYSTEM_NEXT,
+    SYSTEM_RAG_NO_HITS,
     SYSTEM_REVIEW,
     build_chat_user_prompt,
     build_next_user_prompt,
@@ -15,7 +17,7 @@ from app.integrations.llm_prompts import (
 from app.integrations.llm_client import OpenAIChatClient
 from app.config import Settings
 from app.schemas.search import SearchHit
-from app.services.llm_enhancement import try_enhance_chat
+from app.services.llm_enhancement import try_enhance_chat, try_enhance_rag_answer
 
 
 def test_format_notes_block_truncates_and_includes_id() -> None:
@@ -82,13 +84,71 @@ def test_build_next_prompt_includes_heuristics() -> None:
     assert "нумерован" in u or "1." in u
 
 
-def test_try_enhance_chat_skips_without_sources() -> None:
+def test_try_enhance_chat_calls_llm_when_enabled_and_no_sources(monkeypatch) -> None:
+    """При включённом LLM пустой retrieval не даёт llm_skipped — вызывается complete (no_sources)."""
+    mock_client = MagicMock()
+    mock_client.model_name = "gpt-4o-mini"
+    mock_client.complete = MagicMock(return_value=("краткий ответ без заметок", None))
+    monkeypatch.setattr(
+        "app.services.llm_enhancement.resolve_llm_client",
+        lambda _settings: (mock_client, None),
+    )
     s = Settings(llm_enabled=True, openai_api_key="sk-test")
     out = try_enhance_chat(
         s,
         message="hi",
         current_project=None,
         sources=[],
+    )
+    assert out == "краткий ответ без заметок"
+    mock_client.complete.assert_called_once()
+    call_kw = mock_client.complete.call_args.kwargs
+    assert call_kw["system"] == SYSTEM_CHAT_NO_SOURCES
+
+
+def test_try_enhance_chat_no_sources_disabled_skips_llm(caplog) -> None:
+    """LLM выключен — resolve вернёт skip, complete не вызывается."""
+    import logging
+
+    s = Settings(llm_enabled=False, openai_api_key="")
+    with caplog.at_level(logging.INFO):
+        out = try_enhance_chat(
+            s,
+            message="hi",
+            current_project=None,
+            sources=[],
+        )
+    assert out is None
+    assert "llm_skipped" in caplog.text
+    assert "disabled" in caplog.text
+
+
+def test_try_enhance_rag_calls_llm_when_no_chunks(monkeypatch) -> None:
+    mock_client = MagicMock()
+    mock_client.model_name = "gpt-4o-mini"
+    mock_client.complete = MagicMock(return_value=("нет совпадений в RAG", None))
+    monkeypatch.setattr(
+        "app.services.llm_enhancement.resolve_llm_client",
+        lambda _settings: (mock_client, None),
+    )
+    s = Settings(llm_enabled=True, openai_api_key="sk-test")
+    out = try_enhance_rag_answer(
+        s,
+        question="что?",
+        current_project="p1",
+        chunks=[],
+    )
+    assert out == "нет совпадений в RAG"
+    assert mock_client.complete.call_args.kwargs["system"] == SYSTEM_RAG_NO_HITS
+
+
+def test_try_enhance_rag_skipped_when_llm_disabled() -> None:
+    s = Settings(llm_enabled=False, openai_api_key="")
+    out = try_enhance_rag_answer(
+        s,
+        question="q",
+        current_project=None,
+        chunks=[],
     )
     assert out is None
 

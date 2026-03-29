@@ -43,9 +43,9 @@ def answer_text_query(
     current_project: str | None,
 ) -> str:
     """
-    Retrieve with ``review_ask_stub``, then optionally rephrase via LLM if enabled and notes exist.
+    Retrieve с ``review_ask_stub``, затем при ``LLM_ENABLED`` — ответ через LLM (grounded или no_sources).
 
-    No notes, LLM off, or LLM failure → deterministic formatting unchanged.
+    Если LLM выключен, нет ключа или сбой API — детерминированное оформление без изменений.
     """
     _ = user_id
     result = review_ask_stub(db, message, current_project=current_project)

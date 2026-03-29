@@ -76,6 +76,23 @@ def test_ui_rag_shows_back_link_with_project_query(client: TestClient) -> None:
     assert f'href="/ui/project/{q}"' in r.text
 
 
+def test_ui_rag_scoped_mode_hides_project_switch(client: TestClient) -> None:
+    _mk_project(client, "RagScopedA")
+    r = client.get("/ui/rag", params={"project": "RagScopedA"})
+    assert r.status_code == 200
+    assert "RAG / GitHub для проекта RagScopedA" in r.text
+    assert 'id="proj_pick"' not in r.text
+    assert "переключение обновляет форму" not in r.text
+
+
+def test_ui_rag_global_mode_shows_project_switch(client: TestClient) -> None:
+    _mk_project(client, "RagGlobalB")
+    r = client.get("/ui/rag")
+    assert r.status_code == 200
+    assert 'id="proj_pick"' in r.text
+    assert "переключение обновляет форму" in r.text
+
+
 def test_ui_rag_no_back_link_without_project_query(client: TestClient) -> None:
     _mk_project(client, "NavRag2")
     r = client.get("/ui/rag")

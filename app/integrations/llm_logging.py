@@ -9,7 +9,7 @@ from dataclasses import dataclass
 class LLMRequestLogInfo:
     """Context for one Chat Completions call (logged, never includes API key or full bodies)."""
 
-    mode: str  # chat | review | next
+    mode: str  # chat | review | next | rag
     scope: str  # global or project name
     notes_count: int
     model: str

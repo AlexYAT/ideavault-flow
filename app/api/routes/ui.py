@@ -280,10 +280,13 @@ def ui_rag_page(
     qp = (project or "").strip()
     nav_from_query_project: str | None = None
     nav_from_query_url: str | None = None
+    rag_scoped = False
     if qp and qp in projects:
         selected: str | None = qp
         nav_from_query_project = qp
         nav_from_query_url = quote(qp, safe="")
+        project_service.set_current_project(db, uid, qp)
+        rag_scoped = True
     elif current and current in projects:
         selected = current
     else:
@@ -302,6 +305,7 @@ def ui_rag_page(
             "selected_project": selected or "",
             "nav_from_query_project": nav_from_query_project,
             "nav_from_query_url": nav_from_query_url,
+            "rag_scoped": rag_scoped,
             "pref_repo": pref_repo,
             "pref_branch": pref_branch,
             "pref_files": pref_files,

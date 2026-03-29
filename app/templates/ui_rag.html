@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}RAG bind · IdeaVault{% endblock %}
+{% block title %}{% if rag_scoped and selected_project %}RAG / GitHub · {{ selected_project }}{% else %}RAG bind · IdeaVault{% endif %}{% endblock %}
 {% block body %}
 {% if nav_from_query_project and nav_from_query_url %}
 <p class="muted"><a href="/ui/project/{{ nav_from_query_url }}">← К проекту {{ nav_from_query_project }}</a></p>
 {% endif %}
-<h1>RAG: привязка GitHub</h1>
+<h1>{% if rag_scoped and selected_project %}RAG / GitHub для проекта {{ selected_project }}{% else %}RAG: привязка GitHub{% endif %}</h1>
 <p class="muted">
   Пути проверяются через <code>raw.githubusercontent.com</code> перед сохранением.
   Сохраняются только доступные файлы; сообщение после отправки формы отражает реальный результат.
@@ -12,9 +12,10 @@
 {% if not projects %}
 <p>Нет проектов в заметках. Добавьте заметки с полем project, затем откройте страницу снова.</p>
 {% else %}
-{% if selected_project %}
+{% if selected_project and not rag_scoped %}
 <h2>Редактируется проект: <code>{{ selected_project }}</code></h2>
 {% endif %}
+{% if not rag_scoped %}
 <form method="get" action="/ui/rag" id="rag-project-switch">
   <p>
     <label for="proj_pick">Проект (переключение обновляет форму)</label><br>
@@ -26,6 +27,7 @@
   </p>
 </form>
 <hr style="margin: 1rem 0; border: none; border-top: 1px solid #ddd;">
+{% endif %}
 <form method="post" action="/ui/rag/bind">
   <input type="hidden" name="project" value="{{ selected_project }}">
   <p>

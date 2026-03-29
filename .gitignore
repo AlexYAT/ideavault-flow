@@ -40,9 +40,19 @@ ENV/
 .coverage
 htmlcov/
 
-# App data (local DB)
-data/*.db
-data/*.db-*
+# --- App runtime data under data/ (не коммитить рабочие артефакты) ---
+
+# SQLite: БД по умолчанию sqlite:///./data/ideavault.db и любые копии/шардирование в подпапках
+data/**/*.db
+data/**/*.db-*
+
+# Голосовые файлы Telegram (STT): data/voice/<проект|_global>/
+data/voice/
+
+# Локальный корпус RAG: проектные каталоги и всё содержимое, кроме демо из README
+data/knowledge/**
+!data/knowledge/_global/
+!data/knowledge/_global/example.md
 
 # Reports (generated)
 reports/*
