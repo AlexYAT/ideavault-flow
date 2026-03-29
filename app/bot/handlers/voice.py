@@ -70,12 +70,35 @@ async def on_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         transcript = await asyncio.to_thread(openai_stt.transcribe_audio_file, dest_abs, settings)
         if transcript:
             voice_repo.finalize_stt(db, rec.id, transcript=transcript, status="ok")
+            try:
+                item = bot_dialog_service.save_voice_transcript_item(
+                    db,
+                    transcript=transcript,
+                    current_project=current,
+                    raw_payload_ref=rel,
+                )
+            except Exception as exc:
+                logger.exception("voice item save failed: %s", exc)
+                await update.effective_message.reply_text(
+                    f"🎤 Распознано:\n{transcript}\n\n"
+                    f"⚠️ Не удалось сохранить заметку ({type(exc).__name__}). "
+                    f"Файл: {rel}",
+                )
+                return
+            scope = f"«{current}»" if current else "глобально (без проекта)"
             header = (
                 f"🎤 Распознано:\n{transcript}\n\n"
-                f"Файл сохранён: {rel}\n\n"
+                f"✅ Сохранено как заметка #{item.id} · проект {scope}\n"
+                f"Файл: {rel}\n\n"
+                f"———\n"
             )
-            reply_body = bot_dialog_service.process_incoming_text(db, uid, transcript)
-            await update.effective_message.reply_text(header + reply_body)
+            reply_body = bot_dialog_service.process_incoming_text(
+                db, uid, transcript, chat_only=True
+            )
+            if reply_body:
+                await update.effective_message.reply_text(header + reply_body)
+            else:
+                await update.effective_message.reply_text(header.rstrip())
             return
 
         voice_repo.finalize_stt(

@@ -29,6 +29,18 @@ from app.db.tables import Base
 from app.main import app
 
 
+@pytest.fixture(autouse=True)
+def _tests_ignore_dotenv_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Перекрываем ``API_KEY`` из ``.env``: пустая строка в env сильнее, чем файл."""
+    monkeypatch.setenv("API_KEY", "")
+    try:
+        from app.config import get_settings as _gs
+
+        _gs.cache_clear()
+    except Exception:
+        pass
+
+
 @pytest.fixture
 def db_session() -> Generator[Session, None, None]:
     """Isolated in-memory DB session for service-layer tests (no HTTP)."""

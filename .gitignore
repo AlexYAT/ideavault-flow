@@ -49,6 +49,9 @@ data/**/*.db-*
 # Голосовые файлы Telegram (STT): data/voice/<проект|_global>/
 data/voice/
 
+# Фото из Telegram (без vision в MVP): data/telegram_photos/<проект|_global>/
+data/telegram_photos/
+
 # Локальный корпус RAG: проектные каталоги и всё содержимое, кроме демо из README
 data/knowledge/**
 !data/knowledge/_global/

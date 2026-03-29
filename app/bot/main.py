@@ -10,7 +10,7 @@ import sys
 from telegram import BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
-from app.bot.handlers import commands, messages, project_picker, rag_commands, voice
+from app.bot.handlers import commands, messages, photos, project_picker, rag_commands, voice
 from app.config import settings
 from app.db.base import init_db
 from app.logging import setup_logging
@@ -59,6 +59,7 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("stats", rag_commands.cmd_stats))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, messages.on_text))
     app.add_handler(MessageHandler(filters.VOICE, voice.on_voice))
+    app.add_handler(MessageHandler(filters.PHOTO, photos.on_photo))
     return app
 
 

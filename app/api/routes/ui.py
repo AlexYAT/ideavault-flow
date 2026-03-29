@@ -5,23 +5,50 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Form, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.core.enums import CaptureSource
 from app.core.project_constants import SYSTEM_NULL_PROJECT_NAME
 from app.db.base import get_db
 from app.rag.indexer import reindex_project_scope
 from app.repositories import items_repo, project_registry_repo, rag_repo
 from app.services import bot_dialog_service, chat_history_service, project_dashboard_service, project_service
 from app.services.rag_binding_service import format_bind_result_message, validate_github_paths
+from app.services.telegram_photo_service import PROJECT_ROOT
 
 router = APIRouter(prefix="/ui", tags=["ui"])
 
 _TEMPLATES = Path(__file__).resolve().parents[2] / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES))
+
+DATA_ROOT = (PROJECT_ROOT / "data").resolve()
+
+_IMAGE_SUFFIXES = frozenset({".jpg", ".jpeg", ".png", ".webp"})
+
+
+def resolve_path_under_data(rel_path: str) -> Path | None:
+    """Путь только внутри ``data/``; иначе ``None``."""
+    stripped = (rel_path or "").strip()
+    if not stripped:
+        return None
+    p = Path(stripped.replace("\\", "/"))
+    candidate = p.resolve() if p.is_absolute() else (PROJECT_ROOT / p).resolve()
+    try:
+        candidate.relative_to(DATA_ROOT)
+    except ValueError:
+        return None
+    return candidate
+
+
+def attachment_is_image_preview(source: str, ref: str) -> bool:
+    if source == CaptureSource.TELEGRAM_PHOTO.value:
+        return True
+    suf = Path(ref.replace("\\", "/")).suffix.lower()
+    return suf in _IMAGE_SUFFIXES
 
 
 def _redirect(url: str, msg: str) -> RedirectResponse:
@@ -43,6 +70,19 @@ def _redirect_items_list(msg: str, *, list_project: str | None = None) -> Redire
         pq = quote(scope, safe="")
         return RedirectResponse(f"/ui/items?project={pq}&msg={qmsg}", status_code=303)
     return RedirectResponse(f"/ui/items?msg={qmsg}", status_code=303)
+
+
+@router.get("/files")
+def ui_serve_data_file(
+    path: str = Query(..., min_length=1, description="raw_payload_ref внутри data/"),
+) -> FileResponse:
+    """Отдаёт файл из ``data/``; произвольные пути снаружи запрещены."""
+    resolved = resolve_path_under_data(path)
+    if resolved is None:
+        raise HTTPException(status_code=403, detail="Path not allowed")
+    if not resolved.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(path=resolved, filename=resolved.name)
 
 
 # --- Dashboard & project CRUD (product UI) ---
@@ -366,10 +406,63 @@ def ui_items_page(
             "project_options": project_options,
             "filter_project": filt,
             "filter_project_url": filter_project_url,
+            "filter_project_for_query": quote(filt, safe="") if filt else None,
             "system_null_name": SYSTEM_NULL_PROJECT_NAME,
             "msg": msg,
         },
     )
+
+
+@router.get("/items/{item_id}/edit")
+def ui_item_edit_form(
+    request: Request,
+    item_id: int,
+    db: Session = Depends(get_db),
+    return_project: str | None = Query(None, description="Фильтр списка после сохранения"),
+) -> object:
+    row = items_repo.get_item(db, item_id)
+    if row is None:
+        return _redirect("/ui/items", "Заметка не найдена")
+    rp = (return_project or "").strip() or None
+    qproj = quote(rp, safe="") if rp else ""
+    ref = (row.raw_payload_ref or "").strip() or None
+    file_open_url: str | None = None
+    file_missing = False
+    show_image_preview = False
+    if ref:
+        resolved = resolve_path_under_data(ref)
+        if resolved is None or not resolved.is_file():
+            file_missing = True
+        else:
+            file_open_url = f"/ui/files?path={quote(ref, safe='')}"
+            show_image_preview = attachment_is_image_preview(row.source, ref)
+    return templates.TemplateResponse(
+        request,
+        "ui_item_edit.html",
+        {
+            "item": row,
+            "return_project": rp,
+            "return_project_q": qproj,
+            "msg": request.query_params.get("msg"),
+            "file_open_url": file_open_url,
+            "file_missing": bool(ref and file_missing),
+            "show_image_preview": show_image_preview,
+        },
+    )
+
+
+@router.post("/items/{item_id}/edit")
+def ui_item_edit_save(
+    item_id: int,
+    db: Session = Depends(get_db),
+    text: str = Form(default=""),
+    return_project: str = Form(default=""),
+) -> RedirectResponse:
+    list_scope = (return_project or "").strip() or None
+    row = items_repo.update_item_text(db, item_id, text)
+    if row is None:
+        return _redirect_items_list("Заметка не найдена", list_project=list_scope)
+    return _redirect_items_list("Заметка обновлена", list_project=list_scope)
 
 
 @router.post("/items/move")

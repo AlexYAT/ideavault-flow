@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Заметка #{{ item.id }} · IdeaVault{% endblock %}
+{% block body %}
+<h1>Редактирование заметки #{{ item.id }}</h1>
+<p class="muted">
+  Проект:
+  {% if not item.project %}
+  (глобально)
+  {% else %}
+  {{ item.project }}
+  {% endif %}
+  · source: <code>{{ item.source }}</code>
+</p>
+{% if item.raw_payload_ref %}
+<p class="muted">
+  Файл:
+  {% if file_missing %}
+  <span>Файл не найден</span>
+  {% else %}
+  <a href="{{ file_open_url }}" target="_blank" rel="noopener noreferrer">Открыть файл</a>
+  {% if show_image_preview %}
+  <br>
+  <a href="{{ file_open_url }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:0.5rem;">
+    <img src="{{ file_open_url }}" alt="Вложение" style="max-width:360px;width:100%;height:auto;cursor:pointer;display:block;border:1px solid #ccc;border-radius:4px;" />
+  </a>
+  {% endif %}
+  {% endif %}
+</p>
+{% endif %}
+<form method="post" action="/ui/items/{{ item.id }}/edit">
+  {% if return_project %}
+  <input type="hidden" name="return_project" value="{{ return_project }}">
+  {% endif %}
+  <p>
+    <label for="text">Текст</label><br>
+    <textarea id="text" name="text" rows="12" cols="72" style="width:100%;max-width:40rem">{{ item.text }}</textarea>
+  </p>
+  <p>
+    <button type="submit" class="btn-primary">Сохранить</button>
+    {% if return_project and return_project_q %}
+    <a class="btn-secondary" href="/ui/items?project={{ return_project_q }}">Отмена</a>
+    {% else %}
+    <a class="btn-secondary" href="/ui/items">Отмена</a>
+    {% endif %}
+  </p>
+</form>
+{% endblock %}

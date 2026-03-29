@@ -56,6 +56,17 @@ def find_item_by_normalized_text(
     return None
 
 
+def update_item_text(db: Session, item_id: int, text: str) -> Item | None:
+    """Обновить только текст заметки."""
+    row = db.get(Item, item_id)
+    if row is None:
+        return None
+    row.text = text
+    db.commit()
+    db.refresh(row)
+    return row
+
+
 def create_item(
     db: Session,
     *,
