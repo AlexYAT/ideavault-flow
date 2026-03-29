@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     api_key: str = ""
     #: Logical ``user_id`` for ``sessions`` row used by the web UI project picker.
     web_ui_user_id: str = "web-ui"
+    #: TEMP diagnostics: ``RAG_RETRIEVAL_DEBUG=true`` — логировать цепочку Web UI → FTS RAG (см. ``RAG_E2E_DEBUG`` в логах).
+    rag_retrieval_debug: bool = False
 
     # Optional OpenAI layer (retrieval unchanged; LLM only formats grounded context)
     llm_enabled: bool = False

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -9,6 +11,8 @@ from app.rag.retriever import retrieve
 from app.schemas.search import SearchHit
 from app.services.llm_enhancement import try_enhance_rag_answer
 from app.services.search_service import scoped_search
+
+_log = logging.getLogger(__name__)
 
 _MAX_RAG_REPLY_LEN = 3900
 
@@ -74,6 +78,20 @@ def answer_rag(
         return "Введите вопрос текстом."
     hits = retrieve(db, q, current_project=current_project, limit=max_chunks)
 
+    settings = get_settings()
+    if settings.rag_retrieval_debug:
+        _log.warning(
+            "RAG_E2E_DEBUG TEMP answer_rag after_retrieve question=%r current_project=%r "
+            "n_chunks=%s chunk_ids_sample=%s titles_sample=%s llm_enabled=%s database_url=%s",
+            q,
+            current_project,
+            len(hits),
+            [h.get("chunk_id") for h in hits[:5]],
+            [h.get("title") for h in hits[:5]],
+            settings.llm_enabled,
+            settings.database_url,
+        )
+
     vault_notes_cached: list[SearchHit] | None = None
     if include_item_hints and current_project is not None:
         vault_notes_cached = list(
@@ -88,7 +106,6 @@ def answer_rag(
         [n.text.strip() for n in vault_notes_cached] if vault_notes_cached else None
     )
 
-    settings = get_settings()
     if not settings.llm_enabled:
         return _deterministic_rag_reply(
             db,
@@ -110,7 +127,19 @@ def answer_rag(
         text = enhanced.strip()
         if len(text) > _MAX_RAG_REPLY_LEN:
             text = text[: _MAX_RAG_REPLY_LEN - 3] + "..."
+        if settings.rag_retrieval_debug:
+            _log.warning(
+                "RAG_E2E_DEBUG TEMP answer_rag llm_path used len_reply=%s preview=%r",
+                len(text),
+                (text[:120] + "…") if len(text) > 120 else text,
+            )
         return text
+
+    if settings.rag_retrieval_debug and hits:
+        _log.warning(
+            "RAG_E2E_DEBUG TEMP answer_rag llm_returned_empty_fallback_deterministic n_chunks=%s",
+            len(hits),
+        )
 
     return _deterministic_rag_reply(
         db,

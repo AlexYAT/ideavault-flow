@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from urllib.parse import quote
 
@@ -21,6 +22,8 @@ from app.services.rag_binding_service import format_bind_result_message, validat
 from app.services.telegram_photo_service import PROJECT_ROOT
 
 router = APIRouter(prefix="/ui", tags=["ui"])
+
+_log_ui = logging.getLogger(__name__)
 
 _TEMPLATES = Path(__file__).resolve().parents[2] / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES))
@@ -200,8 +203,18 @@ def ui_project_chat_send(
     if not text:
         return _redirect(f"/ui/project/{nu}", "Введите сообщение")
     uid = _ui_web_user_id()
+    settings = get_settings()
+    if settings.rag_retrieval_debug:
+        _log_ui.warning(
+            "RAG_E2E_DEBUG TEMP route=POST /ui/project/{name}/chat/send "
+            "url_project=%r web_ui_user_id=%r message_preview=%r database_url=%s",
+            name,
+            uid,
+            (text[:120] + "…") if len(text) > 120 else text,
+            settings.database_url,
+        )
     project_service.set_current_project(db, uid, name)
-    bot_dialog_service.process_incoming_text(db, uid, text)
+    bot_dialog_service.process_incoming_text(db, uid, text, forced_project=name)
     return RedirectResponse(f"/ui/project/{nu}", status_code=303)
 
 
