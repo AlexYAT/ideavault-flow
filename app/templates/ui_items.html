@@ -2,10 +2,11 @@
 {% block title %}Заметки · IdeaVault{% endblock %}
 {% block body %}
 <h1>Задачи / заметки</h1>
-{% if filter_project is defined and filter_project %}
+{% if filter_project and filter_project_url %}
+<p class="muted"><a href="/ui/project/{{ filter_project_url }}">← К проекту {{ filter_project }}</a></p>
 <p class="muted">Фильтр: <strong>{{ filter_project }}</strong> · <a href="/ui/items">Показать все</a></p>
 {% endif %}
-<p class="muted">Перемещение меняет поле <code>project</code> у строки. Пустой проект = глобально.</p>
+<p class="muted">Перемещение меняет поле <code>project</code>. «(глобально)» сохраняет значение без проекта (NULL), в том числе переводит из служебного проекта <code>Null</code>.</p>
 {% if not items %}
 <p>Нет заметок.</p>
 {% else %}
@@ -18,12 +19,15 @@
     <tr>
       <td>{{ it.id }}</td>
       <td>{{ it.text[:200] }}{% if it.text|length > 200 %}…{% endif %}</td>
-      <td>{{ it.project or "—" }}</td>
+      <td>{% if not it.project or it.project == system_null_name %}(глобально){% else %}{{ it.project }}{% endif %}</td>
       <td>
         <form method="post" action="/ui/items/move" style="display:flex; gap:0.35rem; flex-wrap:wrap; align-items:center;">
           <input type="hidden" name="item_id" value="{{ it.id }}">
+          {% if filter_project %}
+          <input type="hidden" name="return_project" value="{{ filter_project }}">
+          {% endif %}
           <select name="project">
-            <option value="" {% if not it.project %}selected{% endif %}>(глобально)</option>
+            <option value="" {% if not it.project or it.project == system_null_name %}selected{% endif %}>(глобально)</option>
             {% for p in project_options %}
             <option value="{{ p }}" {% if it.project == p %}selected{% endif %}>{{ p }}</option>
             {% endfor %}

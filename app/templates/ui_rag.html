@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}RAG bind · IdeaVault{% endblock %}
 {% block body %}
+{% if nav_from_query_project and nav_from_query_url %}
+<p class="muted"><a href="/ui/project/{{ nav_from_query_url }}">← К проекту {{ nav_from_query_project }}</a></p>
+{% endif %}
 <h1>RAG: привязка GitHub</h1>
 <p class="muted">
   Пути проверяются через <code>raw.githubusercontent.com</code> перед сохранением.

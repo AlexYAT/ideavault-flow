@@ -6,8 +6,6 @@
   <title>{% block title %}IdeaVault{% endblock %}</title>
   <style>
     body { font-family: system-ui, sans-serif; max-width: 52rem; margin: 1rem auto; padding: 0 1rem; line-height: 1.45; }
-    nav { margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid #ccc; }
-    nav a { margin-right: 1rem; }
     table { border-collapse: collapse; width: 100%; margin-top: 0.75rem; }
     th, td { border: 1px solid #ddd; padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }
     th { background: #f5f5f5; }
@@ -18,12 +16,6 @@
   </style>
 </head>
 <body>
-  <nav>
-    <a href="/ui">Дашборд</a>
-    <a href="/ui/rag">RAG bind</a>
-    <a href="/ui/items">Заметки</a>
-    <a href="/docs">API</a>
-  </nav>
   {% if msg %}<p class="msg">{{ msg }}</p>{% endif %}
   {% block body %}{% endblock %}
 </body>

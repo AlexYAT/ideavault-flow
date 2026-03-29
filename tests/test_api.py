@@ -28,23 +28,29 @@ def test_ui_dashboard_ok(client: TestClient) -> None:
     assert "Null" in r.text
 
 
-def test_ui_move_item(client: TestClient) -> None:
-    c = client.post(
-        "/api/items",
-        json={"text": "move me", "project": "src-proj", "source": "api"},
-    )
-    assert c.status_code == 200
-    iid = c.json()["id"]
-    r = client.post(
-        "/ui/items/move",
-        data={"item_id": str(iid), "project": "dst-proj"},
-        follow_redirects=False,
-    )
-    assert r.status_code == 303
-    assert "ui/items" in (r.headers.get("location") or "")
-    listed = client.get("/api/items", params={"limit": 50})
-    row = next(x for x in listed.json() if x["id"] == iid)
-    assert row["project"] == "dst-proj"
+def test_ui_move_item(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setenv("API_KEY", "")
+    get_settings.cache_clear()
+    try:
+        c = client.post(
+            "/api/items",
+            json={"text": "move me", "project": "src-proj", "source": "api"},
+        )
+        assert c.status_code == 200
+        iid = c.json()["id"]
+        r = client.post(
+            "/ui/items/move",
+            data={"item_id": str(iid), "project": "dst-proj"},
+            follow_redirects=False,
+        )
+        assert r.status_code == 303
+        assert "ui/items" in (r.headers.get("location") or "")
+        listed = client.get("/api/items", params={"limit": 50})
+        row = next(x for x in listed.json() if x["id"] == iid)
+        assert row["project"] == "dst-proj"
+    finally:
+        monkeypatch.delenv("API_KEY", raising=False)
+        get_settings.cache_clear()
 
 
 def test_health_ok(client: TestClient) -> None:

@@ -1,30 +1,32 @@
 {% extends "base.html" %}
 {% block title %}{{ name }} · IdeaVault{% endblock %}
 {% block body %}
+<p class="muted"><a href="/ui">← Все проекты</a></p>
 <h1>Проект: {{ name }}</h1>
 <p class="muted">{{ description or "Нет описания" }}{% if is_system %} · служебный{% endif %}</p>
 <p>
   <a href="/ui/items?project={{ name_url }}">Задачи</a>
   · <a href="/ui/rag?project={{ name_url }}">RAG / GitHub</a>
-</p>
-<form method="post" action="/ui/projects/set" style="display:inline">
-  <input type="hidden" name="project" value="{{ name }}">
-  <button type="submit">Сделать текущим (web session)</button>
-</form>
- · <a href="/ui/project/{{ name_url }}/edit">Изменить</a>
- · <a href="/ui">Все проекты</a>
+  · <a href="/ui/project/{{ name_url }}/edit">Изменить</a>
 {% if not is_system %}
- · <a href="/ui/project/{{ name_url }}/delete-confirm">Удалить проект</a>
+  · <a href="/ui/project/{{ name_url }}/delete-confirm">Удалить проект</a>
 {% endif %}
+</p>
+<p class="muted">
+  <form method="post" action="/ui/project/{{ name_url }}/rag/reindex" style="display:inline">
+    <button type="submit">Переиндексировать RAG</button>
+  </form>
+  — обновить индекс из <code>data/knowledge/{{ name }}</code> и привязанных файлов GitHub (если есть).
+</p>
 
 <h2 class="project-chat-heading">Чат проекта</h2>
-<p class="muted project-chat-mode-line">
-  {% if chat_mode == "rag" %}
-  <strong>Режим: RAG</strong> (ответы по базе знаний)
-  {% else %}
-  <strong>Режим: без RAG</strong> (поиск по заметкам / vault)
-  {% endif %}
-</p>
+<div class="muted project-chat-mode-line">
+  <strong>Режим:</strong>
+  <ul style="margin:0.35rem 0 0 1.1rem;padding:0">
+    <li>LLM: {% if llm_enabled %}включен{% else %}выключен{% endif %}</li>
+    <li>RAG: {% if chat_mode == "rag" %}включен{% else %}выключен{% endif %} {% if chat_mode == "rag" %}(ответы по базе знаний){% else %}(поиск по заметкам / vault){% endif %}</li>
+  </ul>
+</div>
 <style>
   .project-chat-wrap { margin-top: 1.25rem; border: 1px solid #d0d0d0; border-radius: 10px; background: #e5ddd5; padding: 0.75rem; }
   .project-chat-log { max-height: 22rem; overflow-y: auto; padding: 0.35rem 0.15rem; display: flex; flex-direction: column; gap: 0.45rem; }

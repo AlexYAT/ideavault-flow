@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.core.project_constants import SYSTEM_NULL_PROJECT_NAME
 from app.db.base import get_db
+from app.rag.indexer import reindex_project_scope
 from app.repositories import items_repo, project_registry_repo, rag_repo
 from app.services import bot_dialog_service, chat_history_service, project_dashboard_service, project_service
 from app.services.rag_binding_service import format_bind_result_message, validate_github_paths
@@ -32,6 +33,16 @@ def _redirect_rag(project: str, msg: str) -> RedirectResponse:
     p = quote(project.strip(), safe="")
     m = quote(msg, safe="")
     return RedirectResponse(f"/ui/rag?project={p}&msg={m}", status_code=303)
+
+
+def _redirect_items_list(msg: str, *, list_project: str | None = None) -> RedirectResponse:
+    """Редирект на список задач; сохраняет фильтр ``project=``, если он был на странице."""
+    qmsg = quote(msg, safe="")
+    scope = (list_project or "").strip()
+    if scope:
+        pq = quote(scope, safe="")
+        return RedirectResponse(f"/ui/items?project={pq}&msg={qmsg}", status_code=303)
+    return RedirectResponse(f"/ui/items?msg={qmsg}", status_code=303)
 
 
 # --- Dashboard & project CRUD (product UI) ---
@@ -181,6 +192,27 @@ def ui_project_chat_toggle_mode(name: str, db: Session = Depends(get_db)) -> Red
     return _redirect(f"/ui/project/{nu}", label)
 
 
+@router.post("/project/{name}/rag/reindex")
+def ui_project_rag_reindex(name: str, db: Session = Depends(get_db)) -> RedirectResponse:
+    """Тот же контур, что ``POST /rag/index``: :func:`~app.rag.indexer.reindex_project_scope`."""
+    names = set(project_registry_repo.list_union_names(db))
+    if name not in names:
+        return _redirect("/ui", "Проект не найден")
+    nu = quote(name, safe="")
+    try:
+        stats = reindex_project_scope(db, project=name)
+    except Exception as exc:
+        return _redirect(f"/ui/project/{nu}", f"Ошибка переиндексации RAG: {exc}")
+    msg = (
+        "RAG переиндексирован: удалено документов {del_}, локальных файлов {loc_}, GitHub {gh_}."
+    ).format(
+        del_=stats["deleted_documents"],
+        loc_=stats["indexed_local_files"],
+        gh_=stats["indexed_github_files"],
+    )
+    return _redirect(f"/ui/project/{nu}", msg)
+
+
 @router.get("/project/{name}")
 def ui_project_open(request: Request, name: str, db: Session = Depends(get_db)) -> object:
     if name not in project_registry_repo.list_union_names(db):
@@ -204,6 +236,7 @@ def ui_project_open(request: Request, name: str, db: Session = Depends(get_db)) 
             "branch": bind.branch,
             "files": rag_repo.list_github_paths(db, name),
         }
+    settings = get_settings()
     return templates.TemplateResponse(
         request,
         "ui_project_detail.html",
@@ -217,6 +250,7 @@ def ui_project_open(request: Request, name: str, db: Session = Depends(get_db)) 
             "chat_mode": chat_mode,
             "chat_messages": chat_messages,
             "chat_empty": chat_empty,
+            "llm_enabled": bool(settings.llm_enabled),
             "msg": request.query_params.get("msg"),
         },
     )
@@ -244,8 +278,12 @@ def ui_rag_page(
     current = project_service.get_current_project(db, uid)
     projects = project_service.list_all_ui_projects(db)
     qp = (project or "").strip()
+    nav_from_query_project: str | None = None
+    nav_from_query_url: str | None = None
     if qp and qp in projects:
         selected: str | None = qp
+        nav_from_query_project = qp
+        nav_from_query_url = quote(qp, safe="")
     elif current and current in projects:
         selected = current
     else:
@@ -262,6 +300,8 @@ def ui_rag_page(
         {
             "projects": projects,
             "selected_project": selected or "",
+            "nav_from_query_project": nav_from_query_project,
+            "nav_from_query_url": nav_from_query_url,
             "pref_repo": pref_repo,
             "pref_branch": pref_branch,
             "pref_files": pref_files,
@@ -308,8 +348,11 @@ def ui_items_page(
     project: str | None = Query(None, description="Фильтр по проекту"),
 ) -> object:
     filt: str | None = (project.strip() if project and project.strip() else None)
+    filter_project_url = quote(filt, safe="") if filt else None
     rows = items_repo.list_items(db, project=filt, limit=200)
-    project_options = project_service.list_all_ui_projects(db)
+    project_options = [
+        p for p in project_service.list_all_ui_projects(db) if p != SYSTEM_NULL_PROJECT_NAME
+    ]
     msg = request.query_params.get("msg")
     return templates.TemplateResponse(
         request,
@@ -318,6 +361,8 @@ def ui_items_page(
             "items": rows,
             "project_options": project_options,
             "filter_project": filt,
+            "filter_project_url": filter_project_url,
+            "system_null_name": SYSTEM_NULL_PROJECT_NAME,
             "msg": msg,
         },
     )
@@ -327,11 +372,19 @@ def ui_items_page(
 def ui_items_move(
     item_id: int = Form(...),
     project: str = Form(default=""),
+    return_project: str = Form(default=""),
     db: Session = Depends(get_db),
 ) -> RedirectResponse:
     new_project = project.strip() or None
+    list_scope = (return_project or "").strip() or None
     row = items_repo.set_item_project(db, item_id, new_project)
     if row is None:
-        return _redirect("/ui/items", f"Заметка id={item_id} не найдена")
+        return _redirect_items_list(
+            f"Заметка id={item_id} не найдена",
+            list_project=list_scope,
+        )
     label = new_project or "глобально"
-    return _redirect("/ui/items", f"Заметка #{item_id} → «{label}»")
+    return _redirect_items_list(
+        f"Заметка #{item_id} → «{label}»",
+        list_project=list_scope,
+    )

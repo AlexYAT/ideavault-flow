@@ -63,6 +63,16 @@ def test_ui_project_chat_toggle_mode_flash(client: TestClient) -> None:
     assert "Режим: RAG" in page.text
 
 
+def test_ui_project_rag_reindex_flash(client: TestClient) -> None:
+    _create_project(client, "WebReIdx1")
+    q = quote("WebReIdx1", safe="")
+    r = client.post(f"/ui/project/{q}/rag/reindex", follow_redirects=False)
+    assert r.status_code == 303
+    page = client.get(r.headers.get("location") or "")
+    assert page.status_code == 200
+    assert "переиндексирован" in page.text.lower()
+
+
 def test_ui_project_chat_empty_message_rejected(client: TestClient) -> None:
     _create_project(client, "WebChatUi5")
     q = quote("WebChatUi5", safe="")
