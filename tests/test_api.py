@@ -54,10 +54,9 @@ def test_ui_move_item(client: TestClient, monkeypatch) -> None:
 
 
 def test_health_ok(client: TestClient) -> None:
-    for path in ("/api/health", "/health"):
-        response = client.get(path)
-        assert response.status_code == 200
-        assert response.json() == {"status": "ok"}
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
 
 
 def test_create_and_list_items(client: TestClient) -> None:
@@ -83,14 +82,13 @@ def test_create_and_list_items(client: TestClient) -> None:
 
 def test_search_hits(client: TestClient) -> None:
     client.post("/api/items", json={"text": "alpha uniquetoken beta", "project": "p1"})
-    for search_path in ("/api/search", "/search"):
-        res = client.get(search_path, params={"q": "uniquetoken"})
-        assert res.status_code == 200
-        body = res.json()
-        assert body["query"] == "uniquetoken"
-        assert "items" in body
-        assert len(body["items"]) >= 1
-        assert body["items"][0]["text"] == "alpha uniquetoken beta"
+    res = client.get("/api/search", params={"q": "uniquetoken"})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["query"] == "uniquetoken"
+    assert "items" in body
+    assert len(body["items"]) >= 1
+    assert body["items"][0]["text"] == "alpha uniquetoken beta"
 
 
 def test_projects_distinct_sorted(client: TestClient) -> None:
@@ -128,15 +126,14 @@ def test_review_stub_with_hits(client: TestClient) -> None:
 
 def test_review_snapshot_get(client: TestClient) -> None:
     client.post("/api/items", json={"text": "line for snapshot", "project": "snap"})
-    for review_path in ("/api/review", "/review"):
-        res = client.get(review_path, params={"project": "snap"})
-        assert res.status_code == 200
-        body = res.json()
-        assert body["project"] == "snap"
-        assert "line for snapshot" in body["review"]
-        assert "Фокус" in body["review"] or "фокус" in body["review"].lower()
+    res_snap = client.get("/api/review", params={"project": "snap"})
+    assert res_snap.status_code == 200
+    body = res_snap.json()
+    assert body["project"] == "snap"
+    assert "line for snapshot" in body["review"]
+    assert "Фокус" in body["review"] or "фокус" in body["review"].lower()
 
-    res_all = client.get("/review")
+    res_all = client.get("/api/review")
     assert res_all.status_code == 200
     assert res_all.json()["project"] is None
     assert len(res_all.json()["review"]) > 10

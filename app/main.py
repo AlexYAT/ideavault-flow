@@ -23,14 +23,13 @@ app = FastAPI(
     description=(
         "**MVP:** capture ideas as SQLite notes, search with FTS5, optional OpenAI layer for "
         "grounded answers, Telegram bot + JSON HTTP API sharing one database. "
-        "Use `/docs` to try endpoints; multimodal capture is `POST /capture` (multipart image)."
+        "Use `/docs` to try endpoints; multimodal capture is `POST /api/capture` (multipart image)."
     ),
     version="0.1.0",
     lifespan=lifespan,
     contact={"name": "IdeaVault Flow MVP"},
 )
 
-# `/api/...` — основной префикс; дубликаты без префикса — для простого MVP/сдачи заданий.
 _API_PREFIX = "/api"
 for _router, _tag in (
     (health.router, "health"),
@@ -43,7 +42,6 @@ for _router, _tag in (
     (rag_index.router, "rag"),
 ):
     app.include_router(_router, prefix=_API_PREFIX, tags=[_tag])
-    app.include_router(_router, prefix="", tags=[_tag])
 
 app.include_router(ui.router, tags=["ui"])
 
