@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Удалить {{ name }}?{% endblock %}
+{% block body %}
+<h1>Удаление проекта «{{ name }}»</h1>
+<p class="muted">Все задачи этого проекта будут перенесены в проект <strong>Null</strong> с префиксом в тексте. Локальные знания и GitHub-привязка для этого имени будут очищены.</p>
+<p><a href="/ui/project/{{ name_url }}">Отмена</a></p>
+<form method="post" action="/ui/project/{{ name_url }}/delete">
+  <button type="submit" style="background:#fee;border-color:#c00">Перенести задачи в Null и удалить проект</button>
+</form>
+{% endblock %}

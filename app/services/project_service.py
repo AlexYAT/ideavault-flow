@@ -48,6 +48,13 @@ def list_distinct_projects(db: Session) -> list[str]:
     return items_repo.list_distinct_project_names(db)
 
 
+def list_all_ui_projects(db: Session) -> list[str]:
+    """Реестр ∪ ``items.project``: для веб-UI, бота по-прежнему :func:`list_distinct_projects`."""
+    from app.repositories import project_registry_repo
+
+    return project_registry_repo.list_union_names(db)
+
+
 def get_chat_mode(db: Session, user_id: str) -> str:
     """Return ``vault`` (default search/capture) or ``rag`` (knowledge base Q&A)."""
     row = sessions_repo.get_session(db, user_id)

@@ -4,12 +4,26 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
+
+
+class ProjectRegistry(Base):
+    """
+    Карточка проекта в UI: имя, описание, признак системного (``Null``).
+
+    Имя совпадает с ``Item.project`` / папкой ``data/knowledge/<name>``.
+    """
+
+    __tablename__ = "project_registry"
+
+    name: Mapped[str] = mapped_column(String(255), primary_key=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    is_system: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
 
 class Item(Base):

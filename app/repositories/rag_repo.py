@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.db.tables import RagChunk, RagDocument, RagGithubBinding
 
 
-def delete_documents_for_project(db: Session, *, project: str | None) -> int:
+def delete_documents_for_project(db: Session, *, project: str | None, commit: bool = True) -> int:
     """Remove all knowledge docs (and chunks via ORM) for this scope. ``None`` = global only."""
     q = select(RagDocument)
     if project is None:
@@ -22,8 +22,20 @@ def delete_documents_for_project(db: Session, *, project: str | None) -> int:
     n = len(docs)
     for d in docs:
         db.delete(d)
-    db.commit()
+    if commit:
+        db.commit()
     return n
+
+
+def delete_github_binding(db: Session, project: str, *, commit: bool = True) -> bool:
+    """Удалить привязку GitHub для проекта; ``False`` если записи не было."""
+    row = db.get(RagGithubBinding, project)
+    if row is None:
+        return False
+    db.delete(row)
+    if commit:
+        db.commit()
+    return True
 
 
 def add_document_with_chunks(

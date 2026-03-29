@@ -7,6 +7,7 @@ Run: ``python -m app.bot.main`` from project root (with ``.env`` loaded).
 import logging
 import sys
 
+from telegram import BotCommand
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from app.bot.handlers import commands, messages, project_picker, rag_commands, voice
@@ -16,6 +17,22 @@ from app.logging import setup_logging
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_BOT_COMMANDS: list[BotCommand] = [
+    BotCommand("start", "Начало работы"),
+    BotCommand("project", "Выбрать проект"),
+    BotCommand("set", "Установить проект: /set <имя>"),
+    BotCommand("clear", "Сбросить проект"),
+    BotCommand("mode", "Режим работы (vault/rag)"),
+    BotCommand("index", "Индексировать базу знаний"),
+    BotCommand("stats", "Статистика"),
+    BotCommand("resetchat", "Сбросить диалог"),
+]
+
+
+async def _post_init_set_commands(application: Application) -> None:
+    """Register commands in Telegram client menu (blue / button)."""
+    await application.bot.set_my_commands(_DEFAULT_BOT_COMMANDS)
+
 
 def build_application() -> Application:
     """Register command, text, and voice handlers (long polling)."""
@@ -24,7 +41,7 @@ def build_application() -> Application:
         raise RuntimeError(
             "TELEGRAM_BOT_TOKEN is missing or empty. Set it in .env or the environment.",
         )
-    app = Application.builder().token(token).build()
+    app = Application.builder().token(token).post_init(_post_init_set_commands).build()
     app.add_handler(CommandHandler("start", commands.cmd_start))
     app.add_handler(CommandHandler("set", commands.cmd_set))
     app.add_handler(CommandHandler("current", commands.cmd_current))

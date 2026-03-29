@@ -21,6 +21,32 @@ def test_post_items_401_without_x_api_key_when_api_key_set(monkeypatch, client: 
         get_settings.cache_clear()
 
 
+def test_ui_dashboard_ok(client: TestClient) -> None:
+    r = client.get("/ui")
+    assert r.status_code == 200
+    assert "Проекты" in r.text
+    assert "Null" in r.text
+
+
+def test_ui_move_item(client: TestClient) -> None:
+    c = client.post(
+        "/api/items",
+        json={"text": "move me", "project": "src-proj", "source": "api"},
+    )
+    assert c.status_code == 200
+    iid = c.json()["id"]
+    r = client.post(
+        "/ui/items/move",
+        data={"item_id": str(iid), "project": "dst-proj"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303
+    assert "ui/items" in (r.headers.get("location") or "")
+    listed = client.get("/api/items", params={"limit": 50})
+    row = next(x for x in listed.json() if x["id"] == iid)
+    assert row["project"] == "dst-proj"
+
+
 def test_health_ok(client: TestClient) -> None:
     for path in ("/api/health", "/health"):
         response = client.get(path)

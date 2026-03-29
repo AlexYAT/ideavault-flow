@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Заметки · IdeaVault{% endblock %}
+{% block body %}
+<h1>Задачи / заметки</h1>
+{% if filter_project is defined and filter_project %}
+<p class="muted">Фильтр: <strong>{{ filter_project }}</strong> · <a href="/ui/items">Показать все</a></p>
+{% endif %}
+<p class="muted">Перемещение меняет поле <code>project</code> у строки. Пустой проект = глобально.</p>
+{% if not items %}
+<p>Нет заметок.</p>
+{% else %}
+<table>
+  <thead>
+    <tr><th>id</th><th>Текст</th><th>Сейчас</th><th>Переместить</th></tr>
+  </thead>
+  <tbody>
+  {% for it in items %}
+    <tr>
+      <td>{{ it.id }}</td>
+      <td>{{ it.text[:200] }}{% if it.text|length > 200 %}…{% endif %}</td>
+      <td>{{ it.project or "—" }}</td>
+      <td>
+        <form method="post" action="/ui/items/move" style="display:flex; gap:0.35rem; flex-wrap:wrap; align-items:center;">
+          <input type="hidden" name="item_id" value="{{ it.id }}">
+          <select name="project">
+            <option value="" {% if not it.project %}selected{% endif %}>(глобально)</option>
+            {% for p in project_options %}
+            <option value="{{ p }}" {% if it.project == p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit">Move</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

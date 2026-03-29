@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Проект {{ name }} · IdeaVault{% endblock %}
+{% block body %}
+<h1>Изменить проект</h1>
+<p><a href="/ui/project/{{ name_url }}">← К карточке</a> · <a href="/ui">К списку</a></p>
+<p class="muted">Имя: <strong>{{ name }}</strong></p>
+<form method="post" action="/ui/project/{{ name_url }}/edit">
+  <p><label>Описание<br><textarea name="description" rows="4" cols="50">{{ description or '' }}</textarea></label></p>
+  <button type="submit">Сохранить</button>
+</form>
+{% endblock %}

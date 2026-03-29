@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}RAG bind · IdeaVault{% endblock %}
+{% block body %}
+<h1>RAG: привязка GitHub</h1>
+<p class="muted">
+  Пути проверяются через <code>raw.githubusercontent.com</code> перед сохранением.
+  Сохраняются только доступные файлы; сообщение после отправки формы отражает реальный результат.
+</p>
+{% if not projects %}
+<p>Нет проектов в заметках. Добавьте заметки с полем project, затем откройте страницу снова.</p>
+{% else %}
+{% if selected_project %}
+<h2>Редактируется проект: <code>{{ selected_project }}</code></h2>
+{% endif %}
+<form method="get" action="/ui/rag" id="rag-project-switch">
+  <p>
+    <label for="proj_pick">Проект (переключение обновляет форму)</label><br>
+    <select name="project" id="proj_pick" aria-label="Выбор проекта для RAG" onchange="this.form.submit()">
+      {% for p in projects %}
+      <option value="{{ p }}" {% if p == selected_project %}selected{% endif %}>{{ p }}</option>
+      {% endfor %}
+    </select>
+  </p>
+</form>
+<hr style="margin: 1rem 0; border: none; border-top: 1px solid #ddd;">
+<form method="post" action="/ui/rag/bind">
+  <input type="hidden" name="project" value="{{ selected_project }}">
+  <p>
+    <label for="repo">Репозиторий (owner/repo)</label><br>
+    <input type="text" name="repo" id="repo" value="{{ pref_repo }}" placeholder="octocat/Hello-World" required size="40">
+  </p>
+  <p>
+    <label for="branch">Ветка</label><br>
+    <input type="text" name="branch" id="branch" value="{{ pref_branch or 'main' }}" size="20">
+  </p>
+  <p>
+    <label for="files">Файлы (по строке, только то, что уже сохранено в binding, показывается здесь)</label><br>
+    <textarea name="files" id="files" rows="6" cols="50" placeholder="README.md&#10;docs/guide.md">{{ pref_files }}</textarea>
+  </p>
+  <button type="submit">Проверить и сохранить</button>
+</form>
+{% endif %}
+{% endblock %}

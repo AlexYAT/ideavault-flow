@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Проекты · IdeaVault{% endblock %}
+{% block body %}
+<h1>Проекты</h1>
+<p class="muted"><strong>Null</strong> — служебный проект (корзина для задач из удалённых проектов); не удаляется.</p>
+<p><a href="/ui/project/new"><button type="button">Создать проект</button></a></p>
+<table>
+  <thead>
+    <tr>
+      <th>Проект</th>
+      <th>Описание</th>
+      <th>Задачи (шт.)</th>
+      <th>Лок. файлы</th>
+      <th>Локальный RAG</th>
+      <th>GitHub bind</th>
+      <th>Действия</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+    <tr {% if row.is_system %}style="background:#f9f9f9"{% endif %}>
+      <td>
+        {% if row.is_system %}<span class="muted">[служебный]</span>{% endif %}
+        <strong>{{ row.name }}</strong>
+      </td>
+      <td>{{ row.description or "—" }}</td>
+      <td>{{ row.num_items }}</td>
+      <td>{{ row.num_local_rag_files }}</td>
+      <td>{{ "да" if row.has_local_rag else "нет" }}</td>
+      <td>{{ "да" if row.has_github_bind else "нет" }}</td>
+      <td>
+        <a href="{{ row.open_url }}">Открыть</a>
+        · <a href="{{ row.edit_url }}">Изменить</a>
+        {% if not row.is_system %}
+        · <a href="{{ row.delete_confirm_url }}">Удалить</a>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

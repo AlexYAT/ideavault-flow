@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.routes import capture, health, items, projects, rag_index, review, search, stats
+from app.api.routes import capture, health, items, projects, rag_index, review, search, stats, ui
 from app.db.base import init_db
 from app.logging import setup_logging
 
@@ -45,6 +45,8 @@ for _router, _tag in (
     app.include_router(_router, prefix=_API_PREFIX, tags=[_tag])
     app.include_router(_router, prefix="", tags=[_tag])
 
+app.include_router(ui.router, tags=["ui"])
+
 
 @app.get(
     "/",
@@ -53,4 +55,4 @@ for _router, _tag in (
 )
 def root() -> dict[str, str]:
     """Service identity."""
-    return {"service": "ideavault-flow", "docs": "/docs"}
+    return {"service": "ideavault-flow", "docs": "/docs", "ui": "/ui"}

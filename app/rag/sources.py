@@ -39,3 +39,21 @@ def fetch_github_text(repo_full: str, branch: str, path: str, *, timeout: float 
         resp = client.get(url)
         resp.raise_for_status()
     return resp.text
+
+
+def probe_github_raw(repo_full: str, branch: str, path: str, *, timeout: float = 45.0) -> bool:
+    """
+    Return ``True`` if raw.githubusercontent.com responds with HTTP 200 for this path.
+
+    Used before persisting RAG GitHub bindings (no body returned to caller).
+    """
+    try:
+        url = github_raw_url(repo_full, branch, path)
+    except ValueError:
+        return False
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            resp = client.get(url)
+            return resp.status_code == 200
+    except httpx.HTTPError:
+        return False

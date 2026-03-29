@@ -22,6 +22,17 @@ def get_item(db: Session, item_id: int) -> Item | None:
     return db.get(Item, item_id)
 
 
+def set_item_project(db: Session, item_id: int, project: str | None) -> Item | None:
+    """Update ``Item.project`` (``None`` = глобальная область)."""
+    row = db.get(Item, item_id)
+    if row is None:
+        return None
+    row.project = project
+    db.commit()
+    db.refresh(row)
+    return row
+
+
 def find_item_by_normalized_text(
     db: Session,
     *,

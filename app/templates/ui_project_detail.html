@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} · IdeaVault{% endblock %}
+{% block body %}
+<h1>Проект: {{ name }}</h1>
+<p class="muted">{{ description or "Нет описания" }}{% if is_system %} · служебный{% endif %}</p>
+<p>
+  <a href="/ui/items?project={{ name_url }}">Задачи</a>
+  · <a href="/ui/rag?project={{ name_url }}">RAG / GitHub</a>
+</p>
+<form method="post" action="/ui/projects/set" style="display:inline">
+  <input type="hidden" name="project" value="{{ name }}">
+  <button type="submit">Сделать текущим (web session)</button>
+</form>
+ · <a href="/ui/project/{{ name_url }}/edit">Изменить</a>
+ · <a href="/ui">Все проекты</a>
+{% if not is_system %}
+ · <a href="/ui/project/{{ name_url }}/delete-confirm">Удалить проект</a>
+{% endif %}
+
+<h2 class="project-chat-heading">Чат проекта</h2>
+<p class="muted project-chat-mode-line">
+  {% if chat_mode == "rag" %}
+  <strong>Режим: RAG</strong> (ответы по базе знаний)
+  {% else %}
+  <strong>Режим: без RAG</strong> (поиск по заметкам / vault)
+  {% endif %}
+</p>
+<style>
+  .project-chat-wrap { margin-top: 1.25rem; border: 1px solid #d0d0d0; border-radius: 10px; background: #e5ddd5; padding: 0.75rem; }
+  .project-chat-log { max-height: 22rem; overflow-y: auto; padding: 0.35rem 0.15rem; display: flex; flex-direction: column; gap: 0.45rem; }
+  .project-chat-row { display: flex; width: 100%; }
+  .project-chat-row--user { justify-content: flex-end; }
+  .project-chat-row--assistant { justify-content: flex-start; }
+  .project-chat-bubble {
+    max-width: 85%;
+    padding: 0.45rem 0.65rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.35;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.06);
+  }
+  .project-chat-bubble--user { background: #dcf8c6; border-bottom-right-radius: 4px; }
+  .project-chat-bubble--assistant { background: #fff; border-bottom-left-radius: 4px; border: 1px solid #e8e8e8; }
+  .project-chat-hint { text-align: center; color: #666; font-size: 0.9rem; padding: 1rem 0.5rem; }
+  .project-chat-toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.65rem; padding-top: 0.65rem; border-top: 1px solid #c8c4bc; }
+  .project-chat-toolbar form { display: inline; margin: 0; }
+  .project-chat-input { width: 100%; min-height: 3.5rem; resize: vertical; font-family: inherit; font-size: 0.95rem; padding: 0.45rem 0.55rem; box-sizing: border-box; border-radius: 8px; border: 1px solid #bbb; }
+  .project-chat-send-form { flex: 1 1 12rem; min-width: 10rem; display: flex; flex-direction: column; gap: 0.35rem; }
+  .btn-clear { background: #fff8f0; border-color: #c9a86c; }
+  .btn-mode { background: #eef6ff; border-color: #6ca0c9; }
+</style>
+<div class="project-chat-wrap">
+  <div class="project-chat-log" id="project-chat-log">
+    {% if chat_empty %}
+    <p class="project-chat-hint">Начните диалог по проекту</p>
+    {% endif %}
+    {% for m in chat_messages %}
+    <div class="project-chat-row project-chat-row--{{ m.role }}">
+      <div class="project-chat-bubble project-chat-bubble--{{ m.role }}">{{ m.content }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="project-chat-send-form">
+    <label class="muted" for="chat-message">Сообщение</label>
+    <form method="post" action="/ui/project/{{ name_url }}/chat/send">
+      <textarea id="chat-message" class="project-chat-input" name="message" rows="3" placeholder="Текст сообщения…"></textarea>
+      <div class="project-chat-toolbar">
+        <button type="submit">Отправить</button>
+      </div>
+    </form>
+    <div class="project-chat-toolbar">
+      <form method="post" action="/ui/project/{{ name_url }}/chat/clear">
+        <button type="submit" class="btn-clear">Очистить контекст</button>
+      </form>
+      <form method="post" action="/ui/project/{{ name_url }}/chat/toggle-mode">
+        <button type="submit" class="btn-mode">
+          {% if chat_mode == "rag" %}Переключить на «без RAG»{% else %}Переключить на RAG{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<h3>Локальные файлы RAG</h3>
+<p class="muted">Каталог: <code>data/knowledge/{{ name }}</code></p>
+{% if local_files %}
+<ul>
+  {% for f in local_files %}
+    <li><code>{{ f }}</code></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">Нет файлов</p>
+{% endif %}
+
+{% if github_binding %}
+<h3>GitHub</h3>
+<p>{{ github_binding.repo }} ({{ github_binding.branch }})</p>
+<ul>
+  {% for f in github_binding.files %}
+    <li><code>{{ f }}</code></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.db.tables import ChatThread, UserSession
-from app.repositories import sessions_repo
+from app.db.tables import ChatMessage, ChatThread, UserSession
+from app.repositories import chat_history_repo, sessions_repo
 
 PROJECT_KEY_GLOBAL = "__global__"
 
@@ -65,3 +65,21 @@ def ensure_chat_thread(db: Session, user_id: str) -> ChatThread:
         if existing and existing.project_key == pk and existing.mode == mode:
             return existing
     return start_fresh_thread(db, user_id)
+
+
+def list_active_thread_messages(db: Session, user_id: str, *, limit: int = 200) -> list[ChatMessage]:
+    """
+    Сообщения активного потока, если он согласован с текущим ``current_project`` и ``chat_mode`` сессии.
+
+    Иначе пусто (например, после частичного обновления сессии без ``ensure_chat_thread``).
+    """
+    sess = sessions_repo.get_session(db, user_id)
+    if sess is None or sess.active_chat_thread_id is None:
+        return []
+    t = db.get(ChatThread, sess.active_chat_thread_id)
+    if t is None or t.user_id != user_id:
+        return []
+    pk = project_key(sess.current_project)
+    if t.project_key != pk or t.mode != _session_mode(sess):
+        return []
+    return chat_history_repo.list_recent_messages_for_thread(db, t.id, limit=limit)

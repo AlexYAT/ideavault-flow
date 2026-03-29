@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     api_port: int = 8000
     #: If non-empty, selected POST routes require header ``X-API-Key`` with the same value.
     api_key: str = ""
+    #: Logical ``user_id`` for ``sessions`` row used by the web UI project picker.
+    web_ui_user_id: str = "web-ui"
 
     # Optional OpenAI layer (retrieval unchanged; LLM only formats grounded context)
     llm_enabled: bool = False
